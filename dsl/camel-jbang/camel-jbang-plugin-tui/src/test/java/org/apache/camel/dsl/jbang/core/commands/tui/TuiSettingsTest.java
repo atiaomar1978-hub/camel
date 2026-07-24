@@ -62,6 +62,8 @@ class TuiSettingsTest {
         settings.setAiProvider("gemini");
         settings.setAiModel("gemini-3.5-flash");
         settings.setAiUrl("https://generativelanguage.googleapis.com");
+        settings.setShellHistory("25");
+        settings.setAiPromptHistory("50");
         settings.save();
 
         TuiSettings loaded = TuiSettings.load();
@@ -71,6 +73,8 @@ class TuiSettingsTest {
         assertEquals("gemini", loaded.getAiProvider());
         assertEquals("gemini-3.5-flash", loaded.getAiModel());
         assertEquals("https://generativelanguage.googleapis.com", loaded.getAiUrl());
+        assertEquals("25", loaded.getShellHistory());
+        assertEquals("50", loaded.getAiPromptHistory());
     }
 
     @Test
@@ -109,6 +113,8 @@ class TuiSettingsTest {
         assertNull(settings.getThemeId());
         assertNull(settings.getStartTab());
         assertNull(settings.getDefaultFolder());
+        assertEquals(TuiHistoryLimits.DEFAULT_LIMIT, settings.getShellHistoryLimit());
+        assertEquals(TuiHistoryLimits.DEFAULT_LIMIT, settings.getAiPromptHistoryLimit());
     }
 
     @Test
