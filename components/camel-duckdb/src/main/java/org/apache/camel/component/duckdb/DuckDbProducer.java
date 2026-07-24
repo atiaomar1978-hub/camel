@@ -95,7 +95,7 @@ public class DuckDbProducer extends DefaultProducer {
         if (ObjectHelper.isEmpty(table)) {
             throw new DuckDbException(
                     "A table is required for insert. Provide databasePath/table, the table option, or the "
-                                          + DuckDbConstants.TABLE + " header.");
+                                      + DuckDbConstants.TABLE + " header.");
         }
         List<?> body = exchange.getIn().getBody(List.class);
         if (body == null) {
@@ -160,7 +160,7 @@ public class DuckDbProducer extends DefaultProducer {
         throw new DuckDbException("Could not infer copy format from file name: " + path);
     }
 
-    private static String resolveFilePath(Exchange exchange) throws DuckDbException {
+    private static String resolveFilePath(Exchange exchange) {
         Object body = exchange.getIn().getBody();
         if (body instanceof WrappedFile<?> wrappedFile) {
             body = wrappedFile.getBody();

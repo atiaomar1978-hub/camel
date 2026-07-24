@@ -16,7 +16,10 @@
  */
 package org.apache.camel.component.duckdb;
 
-public class DuckDbException extends Exception {
+/**
+ * Exception thrown when a DuckDB operation fails.
+ */
+public class DuckDbException extends RuntimeException {
 
     public DuckDbException(String message) {
         super(message);

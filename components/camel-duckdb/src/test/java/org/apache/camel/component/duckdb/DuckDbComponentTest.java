@@ -34,7 +34,7 @@ class DuckDbComponentTest extends CamelTestSupport {
 
     @Test
     void createEndpointDefaultsToMemoryWhenPathEmpty() {
-        DuckDbEndpoint endpoint = context.getEndpoint("duckdb:", DuckDbEndpoint.class);
+        DuckDbEndpoint endpoint = context.getEndpoint("duckdb::memory:", DuckDbEndpoint.class);
 
         assertThat(endpoint.getDatabasePath()).isEqualTo(":memory:");
     }
@@ -54,7 +54,7 @@ class DuckDbComponentTest extends CamelTestSupport {
 
     @Test
     void createConsumerIsNotSupported() {
-        DuckDbEndpoint endpoint = context.getEndpoint("duckdb:", DuckDbEndpoint.class);
+        DuckDbEndpoint endpoint = context.getEndpoint("duckdb::memory:", DuckDbEndpoint.class);
 
         assertThatThrownBy(() -> endpoint.createConsumer(exchange -> {
         })).isInstanceOf(UnsupportedOperationException.class);
@@ -63,11 +63,11 @@ class DuckDbComponentTest extends CamelTestSupport {
     @Test
     void componentLevelJdbcUrlIsInherited() {
         DuckDbComponent component = context.getComponent("duckdb", DuckDbComponent.class);
-        component.setJdbcUrl("jdbc:duckdb:/shared.db");
+        component.setJdbcUrl("jdbc:duckdb:");
 
-        DuckDbEndpoint endpoint = context.getEndpoint("duckdb:", DuckDbEndpoint.class);
+        DuckDbEndpoint endpoint = context.getEndpoint("duckdb::memory:", DuckDbEndpoint.class);
 
-        assertThat(endpoint.getJdbcUrl()).isEqualTo("jdbc:duckdb:/shared.db");
+        assertThat(endpoint.getJdbcUrl()).isEqualTo("jdbc:duckdb:");
     }
 
     @Test

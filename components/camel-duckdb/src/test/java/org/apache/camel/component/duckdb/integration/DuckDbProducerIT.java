@@ -49,7 +49,7 @@ class DuckDbProducerIT extends CamelTestSupport {
 
     @Override
     protected RouteBuilder createRouteBuilder() {
-        String endpointBase = "duckdb:?jdbcUrl=" + URLEncoder.encode(service.getJdbcUrl(), StandardCharsets.UTF_8);
+        String endpointBase = "duckdb::memory:?jdbcUrl=" + URLEncoder.encode(service.getJdbcUrl(), StandardCharsets.UTF_8);
         return new RouteBuilder() {
             @Override
             public void configure() {

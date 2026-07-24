@@ -5,8 +5,11 @@ import javax.annotation.processing.Generated;
 import java.util.Map;
 
 import org.apache.camel.CamelContext;
-import org.apache.camel.spi.GeneratedPropertyConfigurer;
+import org.apache.camel.spi.ExtendedPropertyConfigurerGetter;
 import org.apache.camel.spi.PropertyConfigurerGetter;
+import org.apache.camel.spi.ConfigurerStrategy;
+import org.apache.camel.spi.GeneratedPropertyConfigurer;
+import org.apache.camel.util.CaseInsensitiveMap;
 import org.apache.camel.support.component.PropertyConfigurerSupport;
 
 /**
@@ -14,8 +17,7 @@ import org.apache.camel.support.component.PropertyConfigurerSupport;
  */
 @Generated("org.apache.camel.maven.packaging.EndpointSchemaGeneratorMojo")
 @SuppressWarnings("unchecked")
-public class DuckDbComponentConfigurer extends PropertyConfigurerSupport
-        implements GeneratedPropertyConfigurer, PropertyConfigurerGetter {
+public class DuckDbComponentConfigurer extends PropertyConfigurerSupport implements GeneratedPropertyConfigurer, PropertyConfigurerGetter {
 
     @Override
     public boolean configure(CamelContext camelContext, Object obj, String name, Object value, boolean ignoreCase) {
@@ -23,10 +25,10 @@ public class DuckDbComponentConfigurer extends PropertyConfigurerSupport
         switch (ignoreCase ? name.toLowerCase() : name) {
         case "autowiredenabled":
         case "autowiredEnabled": target.setAutowiredEnabled(property(camelContext, boolean.class, value)); return true;
-        case "databasepath":
-        case "databasePath": target.setDatabasePath(property(camelContext, java.lang.String.class, value)); return true;
         case "datasource":
         case "dataSource": target.setDataSource(property(camelContext, javax.sql.DataSource.class, value)); return true;
+        case "databasepath":
+        case "databasePath": target.setDatabasePath(property(camelContext, java.lang.String.class, value)); return true;
         case "jdbcurl":
         case "jdbcUrl": target.setJdbcUrl(property(camelContext, java.lang.String.class, value)); return true;
         case "lazystartproducer":
@@ -37,7 +39,7 @@ public class DuckDbComponentConfigurer extends PropertyConfigurerSupport
 
     @Override
     public String[] getAutowiredNames() {
-        return new String[] { "dataSource" };
+        return new String[]{"dataSource"};
     }
 
     @Override
@@ -45,10 +47,10 @@ public class DuckDbComponentConfigurer extends PropertyConfigurerSupport
         switch (ignoreCase ? name.toLowerCase() : name) {
         case "autowiredenabled":
         case "autowiredEnabled": return boolean.class;
-        case "databasepath":
-        case "databasePath": return java.lang.String.class;
         case "datasource":
         case "dataSource": return javax.sql.DataSource.class;
+        case "databasepath":
+        case "databasePath": return java.lang.String.class;
         case "jdbcurl":
         case "jdbcUrl": return java.lang.String.class;
         case "lazystartproducer":
@@ -63,10 +65,10 @@ public class DuckDbComponentConfigurer extends PropertyConfigurerSupport
         switch (ignoreCase ? name.toLowerCase() : name) {
         case "autowiredenabled":
         case "autowiredEnabled": return target.isAutowiredEnabled();
-        case "databasepath":
-        case "databasePath": return target.getDatabasePath();
         case "datasource":
         case "dataSource": return target.getDataSource();
+        case "databasepath":
+        case "databasePath": return target.getDatabasePath();
         case "jdbcurl":
         case "jdbcUrl": return target.getJdbcUrl();
         case "lazystartproducer":
@@ -75,3 +77,4 @@ public class DuckDbComponentConfigurer extends PropertyConfigurerSupport
         }
     }
 }
+

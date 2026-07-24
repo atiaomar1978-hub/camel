@@ -5,8 +5,11 @@ import javax.annotation.processing.Generated;
 import java.util.Map;
 
 import org.apache.camel.CamelContext;
-import org.apache.camel.spi.GeneratedPropertyConfigurer;
+import org.apache.camel.spi.ExtendedPropertyConfigurerGetter;
 import org.apache.camel.spi.PropertyConfigurerGetter;
+import org.apache.camel.spi.ConfigurerStrategy;
+import org.apache.camel.spi.GeneratedPropertyConfigurer;
+import org.apache.camel.util.CaseInsensitiveMap;
 import org.apache.camel.support.component.PropertyConfigurerSupport;
 
 /**
@@ -14,8 +17,7 @@ import org.apache.camel.support.component.PropertyConfigurerSupport;
  */
 @Generated("org.apache.camel.maven.packaging.EndpointSchemaGeneratorMojo")
 @SuppressWarnings("unchecked")
-public class DuckDbEndpointConfigurer extends PropertyConfigurerSupport
-        implements GeneratedPropertyConfigurer, PropertyConfigurerGetter {
+public class DuckDbEndpointConfigurer extends PropertyConfigurerSupport implements GeneratedPropertyConfigurer, PropertyConfigurerGetter {
 
     @Override
     public boolean configure(CamelContext camelContext, Object obj, String name, Object value, boolean ignoreCase) {
@@ -82,3 +84,4 @@ public class DuckDbEndpointConfigurer extends PropertyConfigurerSupport
         }
     }
 }
+

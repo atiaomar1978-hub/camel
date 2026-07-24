@@ -23,10 +23,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.camel.builder.RouteBuilder;
-import org.apache.camel.component.mock.MockEndpoint;
 import org.apache.camel.test.junit6.CamelTestSupport;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -34,79 +31,37 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class DuckDbProducerTest extends CamelTestSupport {
 
-    @TempDir
-    Path tempDir;
-
-    private String endpointBase;
-
-    @BeforeEach
-    void createSchema() throws Exception {
-        Path dbFile = tempDir.resolve("test.db");
+    private static String jdbcEndpoint(Path dbFile) {
         String jdbcUrl = "jdbc:duckdb:" + dbFile.toAbsolutePath();
-        endpointBase = "duckdb:?jdbcUrl=" + URLEncoder.encode(jdbcUrl, StandardCharsets.UTF_8);
-        template.sendBody(endpointBase + "&operation=execute", "CREATE TABLE events (id INTEGER, name VARCHAR)");
-        template.sendBody(endpointBase + "&operation=execute", "DELETE FROM events");
-    }
-
-    @Override
-    protected RouteBuilder createRouteBuilder() {
-        return new RouteBuilder() {
-            @Override
-            public void configure() {
-                from("direct:insert")
-                        .toD("${header.DuckDbTestUri}?operation=insert&table=events")
-                        .to("mock:inserted");
-                from("direct:query")
-                        .toD("${header.DuckDbTestUri}?operation=query")
-                        .to("mock:queried");
-                from("direct:copy")
-                        .toD("${header.DuckDbTestUri}?operation=copy&table=events&format=csv")
-                        .to("mock:copied");
-            }
-        };
+        return "duckdb::memory:?jdbcUrl=" + URLEncoder.encode(jdbcUrl, StandardCharsets.UTF_8);
     }
 
     @Test
-    void insertAndQueryRows() throws Exception {
-        MockEndpoint inserted = getMockEndpoint("mock:inserted");
-        inserted.expectedMessageCount(1);
-
-        template.send("direct:insert", exchange -> {
-            exchange.getIn().setHeader("DuckDbTestUri", endpointBase);
-            exchange.getIn().setBody(List.of(Map.of("id", 1, "name", "ada")));
-        });
-
-        MockEndpoint.assertIsSatisfied(context);
+    void insertAndQueryRows(@TempDir Path tempDir) throws Exception {
+        String uri = jdbcEndpoint(tempDir.resolve("test.db"));
+        template.sendBody(uri + "&operation=execute", "CREATE TABLE events (id INTEGER, name VARCHAR)");
+        template.sendBody(uri + "&operation=insert&table=events", List.of(Map.of("id", 1, "name", "ada")));
 
         @SuppressWarnings("unchecked")
-        List<Map<String, Object>> rows = template.request("direct:query", exchange -> {
-            exchange.getIn().setHeader("DuckDbTestUri", endpointBase);
-            exchange.getIn().setBody("SELECT name FROM events");
-        }).getMessage().getBody(List.class);
+        List<Map<String, Object>> rows = template.requestBody(uri + "&operation=query", "SELECT name FROM events", List.class);
         assertThat(rows).hasSize(1);
         assertThat(rows.get(0).get("name")).isEqualTo("ada");
     }
 
     @Test
-    void copyFromCsvFile() throws Exception {
+    void copyFromCsvFile(@TempDir Path tempDir) throws Exception {
+        Path dbFile = tempDir.resolve("test.db");
+        String uri = jdbcEndpoint(dbFile);
+        template.sendBody(uri + "&operation=execute", "CREATE TABLE events (id INTEGER, name VARCHAR)");
+
         Path csv = tempDir.resolve("data.csv");
         Files.writeString(csv, "id,name\n2,bob\n");
 
-        MockEndpoint copied = getMockEndpoint("mock:copied");
-        copied.expectedMessageCount(1);
-
-        template.send("direct:copy", exchange -> {
-            exchange.getIn().setHeader("DuckDbTestUri", endpointBase);
-            exchange.getIn().setBody(csv.toFile());
-        });
-
-        MockEndpoint.assertIsSatisfied(context);
+        template.sendBody(uri + "&operation=copy&table=events&format=csv", csv.toFile());
 
         @SuppressWarnings("unchecked")
-        List<Map<String, Object>> rows = template.request("direct:query", exchange -> {
-            exchange.getIn().setHeader("DuckDbTestUri", endpointBase);
-            exchange.getIn().setBody("SELECT name FROM events WHERE id = 2");
-        }).getMessage().getBody(List.class);
+        List<Map<String, Object>> rows = template.requestBody(uri + "&operation=query", "SELECT name FROM events WHERE id = 2",
+                List.class);
         assertThat(rows).extracting(row -> row.get("name")).containsExactly("bob");
     }
 }

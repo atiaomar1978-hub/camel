@@ -2,7 +2,7 @@
 :doctitle: DuckDB
 :shortname: duckdb
 :artifactid: camel-duckdb
-:description: Interact with DuckDB, the in-process analytical SQL database, for embedded analytics and bulk load workflows.
+:description: Interact with DuckDB, the in-process analytical SQL database, for embedded analytics workloads.
 :since: 4.22
 :supportlevel: Preview
 :tabs-sync-option:

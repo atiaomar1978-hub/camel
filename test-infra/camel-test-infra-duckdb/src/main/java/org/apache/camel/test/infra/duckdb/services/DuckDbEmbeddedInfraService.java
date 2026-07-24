@@ -74,7 +74,8 @@ public class DuckDbEmbeddedInfraService implements DuckDbInfraService {
                 databasePath = ":memory:";
                 jdbcUrl = "jdbc:duckdb:";
             } else {
-                databaseFile = Files.createTempFile("camel-duckdb-", ".db");
+                Path dir = Files.createTempDirectory("camel-duckdb-");
+                databaseFile = dir.resolve("embedded.db");
                 databasePath = databaseFile.toAbsolutePath().toString();
                 jdbcUrl = "jdbc:duckdb:" + databasePath;
             }
@@ -108,8 +109,12 @@ public class DuckDbEmbeddedInfraService implements DuckDbInfraService {
         if (databaseFile != null) {
             try {
                 Files.deleteIfExists(databaseFile);
+                Path parent = databaseFile.getParent();
+                if (parent != null) {
+                    Files.deleteIfExists(parent);
+                }
             } catch (Exception e) {
-                LOG.debug("Could not delete temp DuckDB file {}: {}", databaseFile, e.getMessage());
+                LOG.debug("Could not delete temp DuckDB files {}: {}", databaseFile, e.getMessage());
             }
             databaseFile = null;
         }
