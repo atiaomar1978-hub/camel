@@ -414,11 +414,11 @@ class AiPanel {
             }
             return true;
         }
-        if (ke.isKey(KeyCode.UP) && promptHistory != null && promptHistory.isEnabled()) {
+        if (!statsView && ke.isKey(KeyCode.UP) && promptHistory != null && promptHistory.isEnabled()) {
             promptHistory.previous(inputBuffer.toString()).ifPresent(this::replaceInputBuffer);
             return true;
         }
-        if (ke.isKey(KeyCode.DOWN) && promptHistory != null && promptHistory.isEnabled()) {
+        if (!statsView && ke.isKey(KeyCode.DOWN) && promptHistory != null && promptHistory.isEnabled()) {
             promptHistory.next(inputBuffer.toString()).ifPresent(this::replaceInputBuffer);
             return true;
         }

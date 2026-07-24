@@ -26,8 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.parallel.Isolated;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @Isolated
 class AiPanelPromptHistoryTest {
@@ -44,16 +43,16 @@ class AiPanelPromptHistoryTest {
 
         type(panel, "draft");
         panel.handleKeyEvent(KeyEvent.ofKey(KeyCode.UP, KeyModifiers.NONE));
-        assertEquals("second question", panel.inputBufferForTesting());
+        assertThat(panel.inputBufferForTesting()).isEqualTo("second question");
 
         panel.handleKeyEvent(KeyEvent.ofKey(KeyCode.UP, KeyModifiers.NONE));
-        assertEquals("first question", panel.inputBufferForTesting());
+        assertThat(panel.inputBufferForTesting()).isEqualTo("first question");
 
         panel.handleKeyEvent(KeyEvent.ofKey(KeyCode.DOWN, KeyModifiers.NONE));
-        assertEquals("second question", panel.inputBufferForTesting());
+        assertThat(panel.inputBufferForTesting()).isEqualTo("second question");
 
         panel.handleKeyEvent(KeyEvent.ofKey(KeyCode.DOWN, KeyModifiers.NONE));
-        assertEquals("draft", panel.inputBufferForTesting());
+        assertThat(panel.inputBufferForTesting()).isEqualTo("draft");
     }
 
     @Test
@@ -66,8 +65,7 @@ class AiPanelPromptHistoryTest {
         type(panel, "/help");
         panel.handleKeyEvent(KeyEvent.ofKey(KeyCode.ENTER, KeyModifiers.NONE));
 
-        assertEquals(1, panel.promptHistoryEntriesForTesting().size());
-        assertEquals("/help", panel.promptHistoryEntriesForTesting().get(0));
+        assertThat(panel.promptHistoryEntriesForTesting()).containsExactly("/help");
     }
 
     @Test
@@ -82,8 +80,24 @@ class AiPanelPromptHistoryTest {
         type(panel, "draft");
         panel.handleKeyEvent(KeyEvent.ofKey(KeyCode.UP, KeyModifiers.NONE));
 
-        assertEquals("draft", panel.inputBufferForTesting());
-        assertTrue(panel.promptHistoryEntriesForTesting().isEmpty());
+        assertThat(panel.inputBufferForTesting()).isEqualTo("draft");
+        assertThat(panel.promptHistoryEntriesForTesting()).isEmpty();
+    }
+
+    @Test
+    void promptHistoryIgnoredInStatsView(@TempDir Path tempDir) {
+        AiPanel panel = new AiPanel();
+        panel.setClientForTesting(LlmClient.create());
+        panel.open();
+        TuiPromptHistory history = TuiPromptHistory.load(10, tempDir.resolve("history.txt"));
+        history.remember("previous prompt");
+        panel.setPromptHistoryForTesting(history);
+
+        type(panel, "draft");
+        panel.handleKeyEvent(McpFacade.parseKey("Ctrl+u"));
+        panel.handleKeyEvent(KeyEvent.ofKey(KeyCode.UP, KeyModifiers.NONE));
+
+        assertThat(panel.inputBufferForTesting()).isEqualTo("draft");
     }
 
     private static void type(AiPanel panel, String text) {
