@@ -16,6 +16,7 @@
  */
 package org.apache.camel.component.duckdb;
 
+import org.duckdb.DuckDBDriver;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -37,5 +38,31 @@ class DuckDbJdbcSupportTest {
     void jdbcUrlOverrideWins() {
         assertThat(DuckDbJdbcSupport.resolveJdbcUrl("jdbc:duckdb:/tmp/x.db", "ignored"))
                 .isEqualTo("jdbc:duckdb:/tmp/x.db");
+    }
+
+    @Test
+    void readOnlyIsPassedAsConnectionProperty() {
+        assertThat(DuckDbJdbcSupport.connectionProperties(false)).isEmpty();
+        assertThat(DuckDbJdbcSupport.connectionProperties(true))
+                .containsEntry(DuckDBDriver.DUCKDB_READONLY_PROPERTY, "true");
+    }
+
+    @Test
+    void quotesIdentifiers() {
+        assertThat(DuckDbJdbcSupport.quoteIdentifier("order")).isEqualTo("\"order\"");
+        assertThat(DuckDbJdbcSupport.quoteIdentifier(" name ")).isEqualTo("\"name\"");
+        assertThat(DuckDbJdbcSupport.quoteIdentifier("we\"ird")).isEqualTo("\"we\"\"ird\"");
+    }
+
+    @Test
+    void quotesQualifiedIdentifiersPerSegment() {
+        assertThat(DuckDbJdbcSupport.quoteQualifiedIdentifier("events")).isEqualTo("\"events\"");
+        assertThat(DuckDbJdbcSupport.quoteQualifiedIdentifier("main.events")).isEqualTo("\"main\".\"events\"");
+    }
+
+    @Test
+    void keepsAlreadyQuotedIdentifiers() {
+        assertThat(DuckDbJdbcSupport.quoteIdentifier("\"MixedCase\"")).isEqualTo("\"MixedCase\"");
+        assertThat(DuckDbJdbcSupport.quoteQualifiedIdentifier("\"main\".\"events\"")).isEqualTo("\"main\".\"events\"");
     }
 }

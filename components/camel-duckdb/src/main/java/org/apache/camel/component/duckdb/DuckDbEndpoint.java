@@ -44,10 +44,10 @@ public class DuckDbEndpoint extends DefaultEndpoint {
     private Connection injectedConnection;
     private boolean connectionOwned;
 
-    @UriPath(description = "Database path (:memory: or a file path). An optional /table segment sets the default table.")
+    @UriPath(description = "Database path, either :memory: or a relative or absolute file path.")
     private String databasePath = ":memory:";
-    @UriParam(description = "Target table for insert and copy operations. Can also be set in the path as databasePath/table"
-                            + " or overridden with the CamelDuckDbTable header.")
+    @UriParam(description = "Target table for insert and copy operations. Can be overridden per message with the"
+                            + " CamelDuckDbTable header.")
     private String table;
     @UriParam(description = "Full JDBC URL override. When set, databasePath is not used to build the URL.")
     private String jdbcUrl;
@@ -61,7 +61,9 @@ public class DuckDbEndpoint extends DefaultEndpoint {
     @UriParam(defaultValue = "auto",
               description = "File format for copy: csv, parquet, json or auto (inferred from the file extension).")
     private String format = "auto";
-    @UriParam(defaultValue = "false", description = "Open the embedded database file in read-only mode when supported.")
+    @UriParam(defaultValue = "false",
+              description = "Open the embedded database file in read-only mode. Only applies to connections created by"
+                            + " this endpoint from databasePath or jdbcUrl, and requires an existing database file.")
     private boolean readOnly;
     @UriParam(defaultValue = "LIST_MAP",
               description = "How query results are returned: LIST_MAP (List of Map) or JSON array string.")
@@ -104,7 +106,7 @@ public class DuckDbEndpoint extends DefaultEndpoint {
             return;
         }
         String url = DuckDbJdbcSupport.resolveJdbcUrl(jdbcUrl, databasePath);
-        connection = DriverManager.getConnection(url);
+        connection = DriverManager.getConnection(url, DuckDbJdbcSupport.connectionProperties(readOnly));
         connectionOwned = true;
     }
 

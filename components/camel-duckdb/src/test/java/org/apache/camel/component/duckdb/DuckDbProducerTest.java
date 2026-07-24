@@ -20,6 +20,10 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.List;
 import java.util.Map;
 
@@ -28,6 +32,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class DuckDbProducerTest extends CamelTestSupport {
 
@@ -63,5 +68,39 @@ class DuckDbProducerTest extends CamelTestSupport {
         List<Map<String, Object>> rows = template.requestBody(uri + "&operation=query", "SELECT name FROM events WHERE id = 2",
                 List.class);
         assertThat(rows).extracting(row -> row.get("name")).containsExactly("bob");
+    }
+
+    @Test
+    void insertQuotesReservedIdentifiers(@TempDir Path tempDir) throws Exception {
+        String uri = jdbcEndpoint(tempDir.resolve("test.db"));
+        template.sendBody(uri + "&operation=execute", "CREATE TABLE \"order\" (\"select\" INTEGER, \"group\" VARCHAR)");
+        template.sendBody(uri + "&operation=insert&table=order", List.of(Map.of("select", 7, "group", "cli")));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> rows
+                = template.requestBody(uri + "&operation=query", "SELECT \"group\" FROM \"order\"", List.class);
+        assertThat(rows).extracting(row -> row.get("group")).containsExactly("cli");
+    }
+
+    @Test
+    void readOnlyPreventsWrites(@TempDir Path tempDir) throws Exception {
+        Path dbFile = tempDir.resolve("readonly.db");
+        try (Connection connection = DriverManager.getConnection("jdbc:duckdb:" + dbFile.toAbsolutePath());
+             Statement statement = connection.createStatement()) {
+            statement.execute("CREATE TABLE events (id INTEGER, name VARCHAR)");
+        }
+
+        String uri = jdbcEndpoint(dbFile) + "&readOnly=true";
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> rows
+                = template.requestBody(uri + "&operation=query", "SELECT count(*) AS total FROM events", List.class);
+        assertThat(rows).hasSize(1);
+
+        assertThatThrownBy(() -> template.sendBody(uri + "&operation=insert&table=events",
+                List.of(Map.of("id", 1, "name", "ada"))))
+                .rootCause()
+                .isInstanceOf(SQLException.class)
+                .hasMessageContaining("read-only");
     }
 }

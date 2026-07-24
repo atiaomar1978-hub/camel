@@ -16,8 +16,11 @@
  */
 package org.apache.camel.component.duckdb;
 
+import java.nio.file.Path;
+
 import org.apache.camel.test.junit6.CamelTestSupport;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -25,11 +28,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class DuckDbComponentTest extends CamelTestSupport {
 
     @Test
-    void createEndpointParsesDatabasePathAndTable() {
-        DuckDbEndpoint endpoint = context.getEndpoint("duckdb:analytics.db/events", DuckDbEndpoint.class);
+    void createEndpointKeepsAbsoluteDatabasePath(@TempDir Path tempDir) {
+        Path dbFile = tempDir.resolve("analytics.db");
+        DuckDbEndpoint endpoint = context.getEndpoint("duckdb:" + dbFile + "?table=events", DuckDbEndpoint.class);
 
-        assertThat(endpoint.getDatabasePath()).isEqualTo("analytics.db");
+        assertThat(endpoint.getDatabasePath()).isEqualTo(dbFile.toString());
         assertThat(endpoint.getTable()).isEqualTo("events");
+        assertThat(endpoint.resolvedJdbcUrl()).isEqualTo("jdbc:duckdb:" + dbFile);
     }
 
     @Test
@@ -42,7 +47,7 @@ class DuckDbComponentTest extends CamelTestSupport {
     @Test
     void createEndpointAppliesOptions() {
         DuckDbEndpoint endpoint = context.getEndpoint(
-                "duckdb:db/events?operation=query&batchSize=100&format=csv&resultFormat=JSON&jdbcUrl=jdbc:duckdb:",
+                "duckdb::memory:?operation=query&batchSize=100&format=csv&resultFormat=JSON&jdbcUrl=jdbc:duckdb:",
                 DuckDbEndpoint.class);
 
         assertThat(endpoint.getOperation()).isEqualTo(DuckDbOperation.QUERY);
@@ -71,9 +76,10 @@ class DuckDbComponentTest extends CamelTestSupport {
     }
 
     @Test
-    void resolvedJdbcUrlUsesDatabasePath() {
-        DuckDbEndpoint endpoint = context.getEndpoint("duckdb:warehouse.db", DuckDbEndpoint.class);
+    void resolvedJdbcUrlUsesDatabasePath(@TempDir Path tempDir) {
+        Path dbFile = tempDir.resolve("warehouse.db");
+        DuckDbEndpoint endpoint = context.getEndpoint("duckdb:" + dbFile, DuckDbEndpoint.class);
 
-        assertThat(endpoint.resolvedJdbcUrl()).isEqualTo("jdbc:duckdb:warehouse.db");
+        assertThat(endpoint.resolvedJdbcUrl()).isEqualTo("jdbc:duckdb:" + dbFile);
     }
 }

@@ -94,7 +94,7 @@ public class DuckDbProducer extends DefaultProducer {
         String table = resolveTable(exchange);
         if (ObjectHelper.isEmpty(table)) {
             throw new DuckDbException(
-                    "A table is required for insert. Provide databasePath/table, the table option, or the "
+                    "A table is required for insert. Provide the table option or the "
                                       + DuckDbConstants.TABLE + " header.");
         }
         List<?> body = exchange.getIn().getBody(List.class);
@@ -134,10 +134,11 @@ public class DuckDbProducer extends DefaultProducer {
 
     private String buildCopySql(String table, String path, String format) {
         String escapedPath = DuckDbJdbcSupport.escapeSqlLiteral(path);
+        String quotedTable = DuckDbJdbcSupport.quoteQualifiedIdentifier(table);
         return switch (format.toLowerCase(Locale.ROOT)) {
-            case "csv" -> "INSERT INTO " + table + " SELECT * FROM read_csv('" + escapedPath + "')";
-            case "parquet" -> "INSERT INTO " + table + " SELECT * FROM read_parquet('" + escapedPath + "')";
-            case "json" -> "INSERT INTO " + table + " SELECT * FROM read_json('" + escapedPath + "')";
+            case "csv" -> "INSERT INTO " + quotedTable + " SELECT * FROM read_csv('" + escapedPath + "')";
+            case "parquet" -> "INSERT INTO " + quotedTable + " SELECT * FROM read_parquet('" + escapedPath + "')";
+            case "json" -> "INSERT INTO " + quotedTable + " SELECT * FROM read_json('" + escapedPath + "')";
             default -> throw new DuckDbException("Unsupported copy format: " + format);
         };
     }

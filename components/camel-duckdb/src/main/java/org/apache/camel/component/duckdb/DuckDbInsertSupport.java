@@ -68,12 +68,12 @@ final class DuckDbInsertSupport {
 
     private static String buildInsertSql(String table, List<String> columns) {
         StringBuilder sql = new StringBuilder("INSERT INTO ");
-        sql.append(table).append(" (");
+        sql.append(DuckDbJdbcSupport.quoteQualifiedIdentifier(table)).append(" (");
         for (int i = 0; i < columns.size(); i++) {
             if (i > 0) {
                 sql.append(',');
             }
-            sql.append(columns.get(i));
+            sql.append(DuckDbJdbcSupport.quoteIdentifier(columns.get(i)));
         }
         sql.append(") VALUES (");
         sql.append("?,".repeat(columns.size()));

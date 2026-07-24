@@ -46,19 +46,10 @@ public class DuckDbComponent extends DefaultComponent {
         }
 
         String databasePathValue = ObjectHelper.isEmpty(remaining) ? databasePath : remaining;
-        String table = null;
-        int slash = databasePathValue.indexOf('/');
-        if (slash >= 0) {
-            table = databasePathValue.substring(slash + 1);
-            databasePathValue = databasePathValue.substring(0, slash);
-        }
         if (ObjectHelper.isEmpty(databasePathValue)) {
             databasePathValue = ":memory:";
         }
         endpoint.setDatabasePath(databasePathValue);
-        if (ObjectHelper.isNotEmpty(table)) {
-            endpoint.setTable(table);
-        }
 
         setProperties(endpoint, parameters);
         return endpoint;
