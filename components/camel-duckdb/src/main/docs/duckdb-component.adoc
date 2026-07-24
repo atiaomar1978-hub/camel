@@ -59,6 +59,11 @@ The producer supports:
 * `copy` — bulk load from a `File` or path `String` using DuckDB `read_csv` / `read_parquet` / `read_json`
 * `ping` — `SELECT 1` connectivity check; sets `CamelDuckDbPingOk`
 
+The endpoint reuses one JDBC connection for its configured `databasePath` / `jdbcUrl` and serializes access for
+thread safety. Prefer a shared `DataSource` when you need concurrent producers. Set the
+`CamelDuckDbDatabasePath` header to open a short-lived connection to a different database file for a single
+message.
+
 == Example
 
 [source,java]

@@ -1075,7 +1075,7 @@ official JDBC driver. It targets embedded analytics: in-memory or file-backed da
 [source,java]
 ----
 from("direct:events")
-    .to("duckdb:analytics.db/events?operation=insert&table=events&batchSize=1000");
+    .to("duckdb:analytics.db?operation=insert&table=events&batchSize=1000");
 ----
 
 See the xref:next@components::duckdb-component.adoc[DuckDB component] documentation for details.

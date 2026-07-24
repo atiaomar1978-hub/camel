@@ -27,6 +27,7 @@ import java.sql.Statement;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.test.junit6.CamelTestSupport;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -102,5 +103,32 @@ class DuckDbProducerTest extends CamelTestSupport {
                 .rootCause()
                 .isInstanceOf(SQLException.class)
                 .hasMessageContaining("read-only");
+    }
+
+    @Test
+    void databasePathHeaderOverridesEndpointDatabase(@TempDir Path tempDir) throws Exception {
+        Path otherDb = tempDir.resolve("other.db");
+        try (Connection connection = DriverManager.getConnection("jdbc:duckdb:" + otherDb.toAbsolutePath());
+             Statement statement = connection.createStatement()) {
+            statement.execute("CREATE TABLE events (id INTEGER, name VARCHAR)");
+            statement.execute("INSERT INTO events VALUES (1, 'header-db')");
+        }
+
+        context.addRoutes(new RouteBuilder() {
+            @Override
+            public void configure() {
+                from("direct:query-override")
+                        .to("duckdb::memory:?operation=query");
+            }
+        });
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> rows = template.requestBodyAndHeader(
+                "direct:query-override",
+                "SELECT name FROM events",
+                DuckDbConstants.DATABASE_PATH,
+                otherDb.toAbsolutePath().toString(),
+                List.class);
+        assertThat(rows).extracting(row -> row.get("name")).containsExactly("header-db");
     }
 }

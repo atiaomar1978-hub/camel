@@ -2,7 +2,7 @@
 :doctitle: DuckDB
 :shortname: duckdb
 :artifactid: camel-duckdb
-:description: Interact with DuckDB, the in-process analytical SQL database, for embedded analytics and bulk load workflows.
+:description: Interact with DuckDB, the in-process analytical SQL database, for embedded analytics workloads.
 :since: 4.22
 :supportlevel: Preview
 :tabs-sync-option:
@@ -35,12 +35,13 @@ Maven users will need to add the following dependency to their `pom.xml`:
 == URI format
 
 ----
-duckdb:databasePath[/table]?[options]
+duckdb:databasePath?[options]
 ----
 
-Configure `databasePath` as `:memory:` or a file path (for example `analytics.db`). An optional
-`/table` segment sets the default table for `insert` and `copy`. Alternatively set
-`jdbcUrl=jdbc:duckdb:...` to override the built URL, or autowire a shared `javax.sql.DataSource`.
+Configure `databasePath` as `:memory:` or a file path, either relative (`analytics.db`) or absolute
+(`/data/analytics.db`). The default table for `insert` and `copy` is set with the `table` option.
+Alternatively set `jdbcUrl=jdbc:duckdb:...` to override the built URL, or autowire a shared
+`javax.sql.DataSource`.
 
 // component options: START
 include::partial$component-configure-options.adoc[]
@@ -58,12 +59,17 @@ The producer supports:
 * `copy` — bulk load from a `File` or path `String` using DuckDB `read_csv` / `read_parquet` / `read_json`
 * `ping` — `SELECT 1` connectivity check; sets `CamelDuckDbPingOk`
 
+The endpoint reuses one JDBC connection for its configured `databasePath` / `jdbcUrl` and serializes access for
+thread safety. Prefer a shared `DataSource` when you need concurrent producers. Set the
+`CamelDuckDbDatabasePath` header to open a short-lived connection to a different database file for a single
+message.
+
 == Example
 
 [source,java]
 ----
 from("direct:metrics")
-    .to("duckdb:local.db/metrics?operation=insert&table=metrics&batchSize=500");
+    .to("duckdb:local.db?operation=insert&table=metrics&batchSize=500");
 ----
 
 [source,java]

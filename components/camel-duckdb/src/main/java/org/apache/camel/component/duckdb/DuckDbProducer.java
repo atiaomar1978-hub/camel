@@ -46,7 +46,8 @@ public class DuckDbProducer extends DefaultProducer {
     @Override
     public void process(Exchange exchange) throws Exception {
         DuckDbOperation operation = resolveOperation(exchange);
-        try (ConnectionScope scope = ConnectionScope.open(endpoint)) {
+        String databasePathOverride = exchange.getIn().getHeader(DuckDbConstants.DATABASE_PATH, String.class);
+        try (DuckDbConnectionScope scope = endpoint.openConnectionScope(databasePathOverride)) {
             Connection connection = scope.connection();
             switch (operation) {
                 case EXECUTE -> doExecute(exchange, connection);
@@ -205,32 +206,5 @@ public class DuckDbProducer extends DefaultProducer {
             return header;
         }
         return endpoint.getTable();
-    }
-
-    private static final class ConnectionScope implements AutoCloseable {
-
-        private final Connection connection;
-        private final boolean closeOnExit;
-
-        private ConnectionScope(Connection connection, boolean closeOnExit) {
-            this.connection = connection;
-            this.closeOnExit = closeOnExit;
-        }
-
-        static ConnectionScope open(DuckDbEndpoint endpoint) throws Exception {
-            Connection connection = endpoint.getConnectionForProducer();
-            return new ConnectionScope(connection, endpoint.usesExternalConnection());
-        }
-
-        Connection connection() {
-            return connection;
-        }
-
-        @Override
-        public void close() throws Exception {
-            if (closeOnExit && connection != null && !connection.isClosed()) {
-                connection.close();
-            }
-        }
     }
 }

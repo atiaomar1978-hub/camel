@@ -18,6 +18,7 @@ package org.apache.camel.component.duckdb;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.util.concurrent.locks.ReentrantLock;
 
 import javax.sql.DataSource;
 
@@ -29,6 +30,7 @@ import org.apache.camel.spi.UriEndpoint;
 import org.apache.camel.spi.UriParam;
 import org.apache.camel.spi.UriPath;
 import org.apache.camel.support.DefaultEndpoint;
+import org.apache.camel.util.ObjectHelper;
 
 /**
  * Interact with <a href="https://duckdb.org/">DuckDB</a>, the in-process analytical SQL database, for embedded
@@ -38,6 +40,8 @@ import org.apache.camel.support.DefaultEndpoint;
              syntax = "duckdb:databasePath", category = { Category.DATABASE, Category.BIGDATA },
              producerOnly = true, headersClass = DuckDbConstants.class)
 public class DuckDbEndpoint extends DefaultEndpoint {
+
+    private final ReentrantLock connectionLock = new ReentrantLock();
 
     private DataSource dataSource;
     private Connection connection;
@@ -86,17 +90,40 @@ public class DuckDbEndpoint extends DefaultEndpoint {
         throw new UnsupportedOperationException("You cannot receive messages from this endpoint");
     }
 
-    Connection getConnectionForProducer() throws Exception {
-        if (injectedConnection != null) {
-            return injectedConnection;
+    /**
+     * Opens a connection scope for one producer invocation.
+     * <p>
+     * When {@code databasePathOverride} is set (from the {@code CamelDuckDbDatabasePath} header), a short-lived
+     * connection to that path is opened and closed after use. Otherwise the endpoint-owned shared connection is used
+     * under a lock so concurrent exchanges do not share a JDBC connection unsafely. DataSource connections are also
+     * short-lived and closed after use.
+     */
+    DuckDbConnectionScope openConnectionScope(String databasePathOverride) throws Exception {
+        if (ObjectHelper.isNotEmpty(databasePathOverride)) {
+            String url = DuckDbJdbcSupport.resolveJdbcUrl(null, databasePathOverride.trim());
+            Connection overrideConnection
+                    = DriverManager.getConnection(url, DuckDbJdbcSupport.connectionProperties(readOnly));
+            return new DuckDbConnectionScope(overrideConnection, true, null);
         }
-        if (connection != null && !connection.isClosed()) {
-            return connection;
+        if (injectedConnection != null) {
+            return new DuckDbConnectionScope(injectedConnection, false, null);
         }
         if (dataSource != null) {
-            return dataSource.getConnection();
+            return new DuckDbConnectionScope(dataSource.getConnection(), true, null);
         }
-        throw new IllegalStateException("DuckDB connection is not available");
+
+        connectionLock.lock();
+        try {
+            if (connection == null || connection.isClosed()) {
+                String url = DuckDbJdbcSupport.resolveJdbcUrl(jdbcUrl, databasePath);
+                connection = DriverManager.getConnection(url, DuckDbJdbcSupport.connectionProperties(readOnly));
+                connectionOwned = true;
+            }
+            return new DuckDbConnectionScope(connection, false, connectionLock);
+        } catch (Exception e) {
+            connectionLock.unlock();
+            throw e;
+        }
     }
 
     @Override
@@ -112,10 +139,15 @@ public class DuckDbEndpoint extends DefaultEndpoint {
 
     @Override
     protected void doStop() throws Exception {
-        if (connectionOwned && connection != null) {
-            connection.close();
-            connection = null;
-            connectionOwned = false;
+        connectionLock.lock();
+        try {
+            if (connectionOwned && connection != null) {
+                connection.close();
+                connection = null;
+                connectionOwned = false;
+            }
+        } finally {
+            connectionLock.unlock();
         }
         super.doStop();
     }
@@ -206,9 +238,5 @@ public class DuckDbEndpoint extends DefaultEndpoint {
 
     String resolvedJdbcUrl() {
         return DuckDbJdbcSupport.resolveJdbcUrl(jdbcUrl, databasePath);
-    }
-
-    boolean usesExternalConnection() {
-        return injectedConnection != null || dataSource != null;
     }
 }
