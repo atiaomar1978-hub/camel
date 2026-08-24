@@ -392,8 +392,8 @@ public class LangChain4jToolsProducer extends DefaultProducer {
         ChatRequest chatRequest = requestBuilder.build();
         GenAiObservationContext observationContext = GenAiObservationContext.builder()
                 .operationName(GenAiOperationName.CHAT)
-                .system(GenAiModelResolver.resolveSystem(chatModel))
-                .requestModel(GenAiModelResolver.resolveModelName(chatModel))
+                .system(GenAiModelResolver.resolveSystem(exchange.getContext().getClassResolver(), chatModel))
+                .requestModel(GenAiModelResolver.resolveModelName(exchange.getContext().getClassResolver(), chatModel))
                 .componentScheme("langchain4j-tools")
                 .build();
         exchange.getMessage().setHeader(LangChain4jToolsHeaders.REQUEST_MODEL, observationContext.requestModel());
@@ -405,9 +405,11 @@ public class LangChain4jToolsProducer extends DefaultProducer {
                     chatResponse.tokenUsage() != null ? chatResponse.tokenUsage().inputTokenCount() : null,
                     chatResponse.tokenUsage() != null ? chatResponse.tokenUsage().outputTokenCount() : null,
                     chatResponse.finishReason(),
-                    GenAiModelResolver.resolveResponseModelName(chatResponse, observationContext.requestModel())));
+                    GenAiModelResolver.resolveResponseModelName(
+                            exchange.getContext().getClassResolver(), chatResponse, observationContext.requestModel())));
             exchange.getMessage().setHeader(LangChain4jToolsHeaders.RESPONSE_MODEL,
-                    GenAiModelResolver.resolveResponseModelName(chatResponse, observationContext.requestModel()));
+                    GenAiModelResolver.resolveResponseModelName(
+                            exchange.getContext().getClassResolver(), chatResponse, observationContext.requestModel()));
 
             AiMessage aiMessage = chatResponse.aiMessage();
 
