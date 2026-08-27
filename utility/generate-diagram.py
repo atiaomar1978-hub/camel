@@ -185,22 +185,21 @@ INTEGRATION_FLOWS = [
     },
 ]
 
-# LEFT → RIGHT: FROM | Ingress | Camel | Egress | TO  (all on one line per touch point)
+# LEFT → RIGHT: FROM | [Apache Camel box: Ingress + Egress] | TO
 COL_FROM_X = 30
-COL_ING_X = 230
-COL_CAM_X = 410
-COL_EGR_X = 530
-COL_TO_X = 710
+COL_CAMEL_X = 250
+COL_TO_X = 700
 
-W_FROM = 185
-W_ROUTE = 165
-W_CAM = 105
-W_TO = 185
+W_FROM = 200
+W_CAMEL = 480
+W_TO = 200
 
-ROW_H = 54
-ROW_GAP = 12
+W_ING = 210
+W_EGR = 210
+ROW_H = 62
+ROW_GAP = 14
 START_Y = 125
-PAGE_W = 930
+PAGE_W = 920
 PAGE_H = START_Y + len(INTEGRATION_FLOWS) * (ROW_H + ROW_GAP) + 100
 
 cells = []
@@ -211,9 +210,16 @@ def esc(s):
     return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
 
-def rect(cid, label, x, y, w, h, fill, stroke, sw=1, fs=9, bold=True):
+def rect(cid, label, x, y, w, h, fill, stroke, sw=1, fs=9, bold=True, parent="1"):
     fw = "1" if bold else "0"
-    return f'''        <mxCell id="{cid}" value="{esc(label)}" style="rounded=1;whiteSpace=wrap;html=1;fillColor={fill};strokeColor={stroke};strokeWidth={sw};fontSize={fs};fontStyle={fw};align=center;verticalAlign=middle;" vertex="1" parent="1">
+    return f'''        <mxCell id="{cid}" value="{esc(label)}" style="rounded=1;whiteSpace=wrap;html=1;fillColor={fill};strokeColor={stroke};strokeWidth={sw};fontSize={fs};fontStyle={fw};align=center;verticalAlign=middle;" vertex="1" parent="{parent}">
+          <mxGeometry x="{x}" y="{y}" width="{w}" height="{h}" as="geometry"/>
+        </mxCell>'''
+
+
+def camel_container(cid, label, x, y, w, h):
+    """Apache Camel swimlane container for ingress + egress."""
+    return f'''        <mxCell id="{cid}" value="{esc(label)}" style="swimlane;startSize=22;horizontal=0;fillColor=#FFF3E0;strokeColor=#E65100;strokeWidth=3;fontStyle=1;fontSize=10;fontColor=#BF360C;rounded=1;" vertex="1" parent="1">
           <mxGeometry x="{x}" y="{y}" width="{w}" height="{h}" as="geometry"/>
         </mxCell>'''
 
@@ -236,53 +242,46 @@ def edge_labeled(eid, src, tgt, proto, color, width=2):
 
 # Title
 cells.append(text("title", "Electricity Utility — Apache Camel Integration (FROM → TO per line)", 15, 10, PAGE_W - 30, 28, 17, "#1B3A4B", True))
-cells.append(text("subtitle", "One line per touch point: FROM → Ingress Route → Camel → Egress Route → TO  |  protocol on each arrow", 15, 38, PAGE_W - 30, 18, 10, "#546E7A"))
+cells.append(text("subtitle", "FROM → [Apache Camel: Ingress + Egress] → TO  |  ingress & egress inside Camel box  |  protocol on each arrow", 15, 38, PAGE_W - 30, 18, 10, "#546E7A"))
 
 # Column headers
 cells.append(text("h-from", "FROM", COL_FROM_X, 88, W_FROM, 16, 11, "#2E7D32", True))
-cells.append(text("h-ing", "INGRESS", COL_ING_X, 88, W_ROUTE, 16, 10, "#2E7D32", True))
-cells.append(text("h-cam", "APACHE CAMEL", COL_CAM_X, 88, W_CAM, 16, 10, "#E65100", True))
-cells.append(text("h-egr", "EGRESS", COL_EGR_X, 88, W_ROUTE, 16, 10, "#1565C0", True))
+cells.append(text("h-cam", "APACHE CAMEL (Ingress + Egress inside)", COL_CAMEL_X, 88, W_CAMEL, 16, 11, "#E65100", True))
 cells.append(text("h-to", "TO", COL_TO_X, 88, W_TO, 16, 11, "#1565C0", True))
-
-# Camel spine
-hub_h = len(INTEGRATION_FLOWS) * (ROW_H + ROW_GAP) - ROW_GAP
-cells.append(rect("camel-spine", "Camel&#xa;Middleware", COL_CAM_X, START_Y, W_CAM, hub_h, "#FFE0B2", "#E65100", 3, 10))
 
 for i, f in enumerate(INTEGRATION_FLOWS):
     y = START_Y + i * (ROW_H + ROW_GAP)
     p = f"r{i}"
 
     from_id = f"{p}-from"
+    camel_id = f"{p}-camel"
     ing_id = f"{p}-ing"
-    cam_id = f"{p}-cam"
     egr_id = f"{p}-egr"
     to_id = f"{p}-to"
 
     from_lbl = f"FROM: {f['from_num']} {f['from_name']}&#xa;Protocol: {f['from_proto']}"
     ing_lbl = f"INGRESS&#xa;{f['ingress_route']}&#xa;Protocol: {f['ingress_proto']}"
-    cam_lbl = f"{f['name']}"
     egr_lbl = f"EGRESS&#xa;{f['egress_route']}&#xa;Protocol: {f['egress_proto']}"
     to_lbl = f"TO: {f['to_num']} {f['to_name']}&#xa;Protocol: {f['to_proto']}"
 
     cells.append(rect(from_id, from_lbl, COL_FROM_X, y, W_FROM, ROW_H, f["from_fill"], f["from_stroke"]))
-    cells.append(rect(ing_id, ing_lbl, COL_ING_X, y, W_ROUTE, ROW_H, "#E8F5E9", "#2E7D32"))
-    cells.append(rect(cam_id, cam_lbl, COL_CAM_X + 6, y + 6, W_CAM - 12, ROW_H - 12, "#FFCC80", "#E65100", 2, 8))
-    cells.append(rect(egr_id, egr_lbl, COL_EGR_X, y, W_ROUTE, ROW_H, "#E3F2FD", "#1565C0"))
+    cells.append(camel_container(camel_id, f"Apache Camel — {f['name']}", COL_CAMEL_X, y, W_CAMEL, ROW_H))
+    # Ingress & egress inside Camel box (relative coords)
+    cells.append(rect(ing_id, ing_lbl, 12, 30, W_ING, ROW_H - 38, "#E8F5E9", "#2E7D32", parent=camel_id))
+    cells.append(rect(egr_id, egr_lbl, 258, 30, W_EGR, ROW_H - 38, "#E3F2FD", "#1565C0", parent=camel_id))
     cells.append(rect(to_id, to_lbl, COL_TO_X, y, W_TO, ROW_H, f["to_fill"], f["to_stroke"]))
 
-    # LEFT → RIGHT: FROM → Ingress → Camel → Egress → TO
+    # FROM → Ingress (inside Camel) → Egress (inside Camel) → TO
     edge_cells.append(edge_labeled(f"{p}-e1", from_id, ing_id, f["ingress_proto"], "#2E7D32"))
-    edge_cells.append(edge_labeled(f"{p}-e2", ing_id, cam_id, f["ingress_proto"], "#43A047"))
-    edge_cells.append(edge_labeled(f"{p}-e3", cam_id, egr_id, f["egress_proto"], "#1E88E5"))
-    edge_cells.append(edge_labeled(f"{p}-e4", egr_id, to_id, f["egress_proto"], "#1565C0"))
+    edge_cells.append(edge_labeled(f"{p}-e2", ing_id, egr_id, "camel-route", "#E65100"))
+    edge_cells.append(edge_labeled(f"{p}-e3", egr_id, to_id, f["egress_proto"], "#1565C0"))
 
 # Footer
-fy = START_Y + hub_h + 15
-cells.append(text("footer", f"{len(INTEGRATION_FLOWS)} touch points  |  Read each row left-to-right: FROM → TO through Apache Camel  |  diagrams.net", 20, fy, PAGE_W - 40, 20, 9, "#78909C", False, "left"))
+fy = START_Y + len(INTEGRATION_FLOWS) * (ROW_H + ROW_GAP) + 5
+cells.append(text("footer", f"{len(INTEGRATION_FLOWS)} touch points  |  Ingress & Egress inside Apache Camel  |  FROM → TO per line  |  diagrams.net", 20, fy, PAGE_W - 40, 20, 9, "#78909C", False, "left"))
 
-xml = f'''<mxfile host="app.diagrams.net" modified="2026-08-27T23:40:00.000Z" agent="Cursor" version="24.7.0" type="device">
-  <diagram id="utility-camel-v6" name="FROM-TO per line">
+xml = f'''<mxfile host="app.diagrams.net" modified="2026-08-27T23:45:00.000Z" agent="Cursor" version="24.7.0" type="device">
+  <diagram id="utility-camel-v7" name="FROM-TO Camel box">
     <mxGraphModel dx="1100" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="{PAGE_W}" pageHeight="{PAGE_H}" math="0" shadow="0">
       <root>
         <mxCell id="0"/>
