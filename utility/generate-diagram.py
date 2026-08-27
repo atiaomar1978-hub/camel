@@ -198,15 +198,17 @@ W_EGR = 188
 
 ROW_H = 68
 ROW_GAP = 16
-CAMEL_HEADER = 36
+CAMEL_HEADER = 48
+CAMEL_SUBTITLE_H = 22
+ROW_START = CAMEL_HEADER + CAMEL_SUBTITLE_H + 8
 ING_X = 10
 EGR_X = 262
 ROUTE_FS = 8
 ROUTE_H_PAD = 12
 START_Y = 125
 
-hub_content_h = len(INTEGRATION_FLOWS) * (ROW_H + ROW_GAP) - ROW_GAP
-HUB_H = CAMEL_HEADER + hub_content_h + 16
+hub_content_h = CAMEL_SUBTITLE_H + 8 + len(INTEGRATION_FLOWS) * (ROW_H + ROW_GAP) - ROW_GAP
+HUB_H = CAMEL_HEADER + hub_content_h + 20
 
 PAGE_W = 1010
 PAGE_H = START_Y + HUB_H + 80
@@ -246,6 +248,13 @@ def text(cid, label, x, y, w, h, size=12, color="#37474F", bold=False, align="ce
         </mxCell>'''
 
 
+def text_in_parent(cid, label, x, y, w, h, parent, size=10, color="#BF360C", bold=False, align="center"):
+    fw = "1" if bold else "0"
+    return f'''        <mxCell id="{cid}" value="{esc(label)}" style="text;html=1;strokeColor=none;fillColor=none;align={align};verticalAlign=middle;fontSize={size};fontStyle={fw};fontColor={color};" vertex="1" parent="{parent}">
+          <mxGeometry x="{x}" y="{y}" width="{w}" height="{h}" as="geometry"/>
+        </mxCell>'''
+
+
 def edge_labeled(eid, src, tgt, proto, color, width=2):
     return f'''        <mxCell id="{eid}" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor={color};strokeWidth={width};endArrow=classic;endFill=1;" edge="1" parent="1" source="{src}" target="{tgt}">
           <mxGeometry relative="1" as="geometry"/>
@@ -257,18 +266,19 @@ def edge_labeled(eid, src, tgt, proto, color, width=2):
 
 # Title
 cells.append(text("title", "Electricity Utility — Apache Camel Integration Architecture", 15, 10, PAGE_W - 30, 28, 17, "#1B3A4B", True))
-cells.append(text("subtitle", "FROM → ONE Apache Camel hub (all Ingress + Egress inside) → TO  |  protocol on each arrow", 15, 38, PAGE_W - 30, 18, 10, "#546E7A"))
+cells.append(text("subtitle", "FROM → Apache Camel hub → TO  |  protocol on each arrow", 15, 38, PAGE_W - 30, 18, 10, "#546E7A"))
 
 cells.append(text("h-from", "FROM", COL_FROM_X, 88, W_FROM, 16, 11, "#2E7D32", True))
 cells.append(text("h-to", "TO", COL_TO_X, 88, W_TO, 16, 11, "#1565C0", True))
 
 # ONE big Apache Camel box — create before children
 CAMEL_ID = "camel-hub"
-cells.append(camel_hub(CAMEL_ID, "APACHE CAMEL — Centralized Integration Middleware", COL_CAMEL_X, START_Y, W_CAMEL, HUB_H))
+cells.append(camel_hub(CAMEL_ID, "Apache Camel", COL_CAMEL_X, START_Y, W_CAMEL, HUB_H))
+cells.append(text_in_parent("camel-subtitle", "Centralized Integration Middleware", 8, CAMEL_HEADER + 2, W_CAMEL - 16, CAMEL_SUBTITLE_H, CAMEL_ID, 10, "#E65100", True))
 
 for i, f in enumerate(INTEGRATION_FLOWS):
-    y = START_Y + CAMEL_HEADER + 8 + i * (ROW_H + ROW_GAP)
-    ry = CAMEL_HEADER + 8 + i * (ROW_H + ROW_GAP)  # relative inside swimlane
+    y = START_Y + ROW_START + i * (ROW_H + ROW_GAP)
+    ry = ROW_START + i * (ROW_H + ROW_GAP)
     p = f"r{i}"
 
     from_id = f"{p}-from"
@@ -277,8 +287,8 @@ for i, f in enumerate(INTEGRATION_FLOWS):
     to_id = f"{p}-to"
 
     from_lbl = f"FROM: {f['from_num']} {f['from_name']}&#xa;Protocol: {f['from_proto']}"
-    ing_lbl = f"INGRESS&#xa;{f['ingress_route']}&#xa;Protocol: {f['ingress_proto']}"
-    egr_lbl = f"EGRESS&#xa;{f['egress_route']}&#xa;Protocol: {f['egress_proto']}"
+    ing_lbl = f"{f['ingress_route']}&#xa;Protocol: {f['ingress_proto']}"
+    egr_lbl = f"{f['egress_route']}&#xa;Protocol: {f['egress_proto']}"
     to_lbl = f"TO: {f['to_num']} {f['to_name']}&#xa;Protocol: {f['to_proto']}"
 
     route_h = ROW_H - ROUTE_H_PAD
@@ -287,7 +297,7 @@ for i, f in enumerate(INTEGRATION_FLOWS):
     cells.append(rect(from_id, from_lbl, COL_FROM_X, y, W_FROM, ROW_H, f["from_fill"], f["from_stroke"], fs=8))
     cells.append(rect(to_id, to_lbl, COL_TO_X, y, W_TO, ROW_H, f["to_fill"], f["to_stroke"], fs=8))
 
-    # Smaller ingress & egress inside the one big Camel box
+    # Route boxes inside the one big Apache Camel box (no ingress/egress labels)
     cells.append(route_box(ing_id, ing_lbl, ING_X, ry, W_ING, route_h, "#E8F5E9", "#2E7D32", CAMEL_ID))
     cells.append(route_box(egr_id, egr_lbl, EGR_X, ry, W_EGR, route_h, "#E3F2FD", "#1565C0", CAMEL_ID))
 
@@ -297,7 +307,7 @@ for i, f in enumerate(INTEGRATION_FLOWS):
 
 # Footer
 fy = START_Y + HUB_H + 15
-cells.append(text("footer", f"{len(INTEGRATION_FLOWS)} flows  |  All ingress & egress inside one Apache Camel box  |  diagrams.net", 20, fy, PAGE_W - 40, 20, 9, "#78909C", False, "left"))
+cells.append(text("footer", f"{len(INTEGRATION_FLOWS)} flows  |  All routes inside one Apache Camel box  |  diagrams.net", 20, fy, PAGE_W - 40, 20, 9, "#78909C", False, "left"))
 
 xml = f'''<mxfile host="app.diagrams.net" modified="2026-08-27T23:50:00.000Z" agent="Cursor" version="24.7.0" type="device">
   <diagram id="utility-camel-v8" name="Single Camel hub">
