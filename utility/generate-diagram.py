@@ -188,17 +188,21 @@ INTEGRATION_FLOWS = [
 # LEFT → RIGHT: FROM | ONE big Apache Camel box (all ingress + egress inside) | TO
 COL_FROM_X = 30
 COL_CAMEL_X = 250
-COL_TO_X = 790
+COL_TO_X = 770
 
 W_FROM = 200
-W_CAMEL = 520
+W_CAMEL = 500
 W_TO = 200
-W_ING = 235
-W_EGR = 235
+W_ING = 188
+W_EGR = 188
 
-ROW_H = 58
-ROW_GAP = 12
-CAMEL_HEADER = 40
+ROW_H = 68
+ROW_GAP = 16
+CAMEL_HEADER = 36
+ING_X = 10
+EGR_X = 262
+ROUTE_FS = 8
+ROUTE_H_PAD = 12
 START_Y = 125
 
 hub_content_h = len(INTEGRATION_FLOWS) * (ROW_H + ROW_GAP) - ROW_GAP
@@ -215,11 +219,17 @@ def esc(s):
     return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
 
-def rect(cid, label, x, y, w, h, fill, stroke, sw=1, fs=9, bold=True, parent="1"):
+def rect(cid, label, x, y, w, h, fill, stroke, sw=1, fs=9, bold=True, parent="1", align="center"):
     fw = "1" if bold else "0"
-    return f'''        <mxCell id="{cid}" value="{esc(label)}" style="rounded=1;whiteSpace=wrap;html=1;fillColor={fill};strokeColor={stroke};strokeWidth={sw};fontSize={fs};fontStyle={fw};align=center;verticalAlign=middle;" vertex="1" parent="{parent}">
+    spacing = "spacingLeft=6;spacingTop=4;" if align == "left" else ""
+    return f'''        <mxCell id="{cid}" value="{esc(label)}" style="rounded=1;whiteSpace=wrap;html=1;fillColor={fill};strokeColor={stroke};strokeWidth={sw};fontSize={fs};fontStyle={fw};align={align};verticalAlign=middle;{spacing}" vertex="1" parent="{parent}">
           <mxGeometry x="{x}" y="{y}" width="{w}" height="{h}" as="geometry"/>
         </mxCell>'''
+
+
+def route_box(cid, label, x, y, w, h, fill, stroke, parent):
+    """Compact ingress/egress box — small size, left-aligned text."""
+    return rect(cid, label, x, y, w, h, fill, stroke, sw=1, fs=ROUTE_FS, bold=False, parent=parent, align="left")
 
 
 def camel_hub(cid, label, x, y, w, h):
@@ -271,13 +281,15 @@ for i, f in enumerate(INTEGRATION_FLOWS):
     egr_lbl = f"EGRESS&#xa;{f['egress_route']}&#xa;Protocol: {f['egress_proto']}"
     to_lbl = f"TO: {f['to_num']} {f['to_name']}&#xa;Protocol: {f['to_proto']}"
 
-    # FROM / TO outside the big Camel box (aligned per row)
-    cells.append(rect(from_id, from_lbl, COL_FROM_X, y, W_FROM, ROW_H, f["from_fill"], f["from_stroke"]))
-    cells.append(rect(to_id, to_lbl, COL_TO_X, y, W_TO, ROW_H, f["to_fill"], f["to_stroke"]))
+    route_h = ROW_H - ROUTE_H_PAD
 
-    # Ingress & egress INSIDE the one big Camel box
-    cells.append(rect(ing_id, ing_lbl, 14, ry, W_ING, ROW_H - 6, "#E8F5E9", "#2E7D32", parent=CAMEL_ID))
-    cells.append(rect(egr_id, egr_lbl, 270, ry, W_EGR, ROW_H - 6, "#E3F2FD", "#1565C0", parent=CAMEL_ID))
+    # FROM / TO outside the big Camel box (aligned per row)
+    cells.append(rect(from_id, from_lbl, COL_FROM_X, y, W_FROM, ROW_H, f["from_fill"], f["from_stroke"], fs=8))
+    cells.append(rect(to_id, to_lbl, COL_TO_X, y, W_TO, ROW_H, f["to_fill"], f["to_stroke"], fs=8))
+
+    # Smaller ingress & egress inside the one big Camel box
+    cells.append(route_box(ing_id, ing_lbl, ING_X, ry, W_ING, route_h, "#E8F5E9", "#2E7D32", CAMEL_ID))
+    cells.append(route_box(egr_id, egr_lbl, EGR_X, ry, W_EGR, route_h, "#E3F2FD", "#1565C0", CAMEL_ID))
 
     edge_cells.append(edge_labeled(f"{p}-e1", from_id, ing_id, f["ingress_proto"], "#2E7D32"))
     edge_cells.append(edge_labeled(f"{p}-e2", ing_id, egr_id, f["ingress_proto"] + "→" + f["egress_proto"], "#E65100"))

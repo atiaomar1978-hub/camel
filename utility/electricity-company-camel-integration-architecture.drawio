@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net" modified="2026-08-27T23:50:00.000Z" agent="Cursor" version="24.7.0" type="device">
   <diagram id="utility-camel-v8" name="Single Camel hub">
-    <mxGraphModel dx="1100" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1010" pageHeight="1649" math="0" shadow="0">
+    <mxGraphModel dx="1100" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1010" pageHeight="1921" math="0" shadow="0">
       <root>
         <mxCell id="0"/>
         <mxCell id="1" parent="0"/>
@@ -14,253 +14,253 @@
           <mxGeometry x="30" y="88" width="200" height="16" as="geometry"/>
         </mxCell>
         <mxCell id="h-to" value="TO" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontStyle=1;fontColor=#1565C0;" vertex="1" parent="1">
-          <mxGeometry x="790" y="88" width="200" height="16" as="geometry"/>
+          <mxGeometry x="770" y="88" width="200" height="16" as="geometry"/>
         </mxCell>
-        <mxCell id="camel-hub" value="APACHE CAMEL — Centralized Integration Middleware" style="swimlane;startSize=40;horizontal=0;fillColor=#FFF3E0;strokeColor=#E65100;strokeWidth=4;fontStyle=1;fontSize=13;fontColor=#BF360C;rounded=1;" vertex="1" parent="1">
-          <mxGeometry x="250" y="125" width="520" height="1444" as="geometry"/>
+        <mxCell id="camel-hub" value="APACHE CAMEL — Centralized Integration Middleware" style="swimlane;startSize=36;horizontal=0;fillColor=#FFF3E0;strokeColor=#E65100;strokeWidth=4;fontStyle=1;fontSize=13;fontColor=#BF360C;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="250" y="125" width="500" height="1716" as="geometry"/>
         </mxCell>
-        <mxCell id="r0-from" value="FROM: ⑯ AMI Head-End&amp;#xa;Protocol: paho-mqtt5" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFECB3;strokeColor=#FF8F00;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="30" y="173" width="200" height="58" as="geometry"/>
+        <mxCell id="r0-from" value="FROM: ⑯ AMI Head-End&amp;#xa;Protocol: paho-mqtt5" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFECB3;strokeColor=#FF8F00;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="169" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r0-to" value="TO: ㉔ MDM&amp;#xa;Protocol: kafka" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE082;strokeColor=#F57C00;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="790" y="173" width="200" height="58" as="geometry"/>
+        <mxCell id="r0-to" value="TO: ㉔ MDM&amp;#xa;Protocol: kafka" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE082;strokeColor=#F57C00;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="770" y="169" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r0-ing" value="INGRESS&amp;#xa;route-ami-ingest&amp;#xa;Protocol: paho-mqtt5" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="14" y="48" width="235" height="52" as="geometry"/>
+        <mxCell id="r0-ing" value="INGRESS&amp;#xa;route-ami-ingest&amp;#xa;Protocol: paho-mqtt5" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="10" y="44" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r0-egr" value="EGRESS&amp;#xa;route-mdm-out&amp;#xa;Protocol: kafka" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="270" y="48" width="235" height="52" as="geometry"/>
+        <mxCell id="r0-egr" value="EGRESS&amp;#xa;route-mdm-out&amp;#xa;Protocol: kafka" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="262" y="44" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r1-from" value="FROM: ㉝ Oracle CIS Change Data&amp;#xa;Protocol: debezium-oracle" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="30" y="243" width="200" height="58" as="geometry"/>
+        <mxCell id="r1-from" value="FROM: ㉝ Oracle CIS Change Data&amp;#xa;Protocol: debezium-oracle" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="253" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r1-to" value="TO: ㉖ Oracle CIS Database&amp;#xa;Protocol: jdbc" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="790" y="243" width="200" height="58" as="geometry"/>
+        <mxCell id="r1-to" value="TO: ㉖ Oracle CIS Database&amp;#xa;Protocol: jdbc" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="770" y="253" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r1-ing" value="INGRESS&amp;#xa;route-oracle-cdc&amp;#xa;Protocol: debezium-oracle" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="14" y="118" width="235" height="52" as="geometry"/>
+        <mxCell id="r1-ing" value="INGRESS&amp;#xa;route-oracle-cdc&amp;#xa;Protocol: debezium-oracle" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="10" y="128" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r1-egr" value="EGRESS&amp;#xa;route-oracle-cis-out&amp;#xa;Protocol: jdbc" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="270" y="118" width="235" height="52" as="geometry"/>
+        <mxCell id="r1-egr" value="EGRESS&amp;#xa;route-oracle-cis-out&amp;#xa;Protocol: jdbc" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="262" y="128" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r2-from" value="FROM: ㉒ Protection Relays&amp;#xa;Protocol: timer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFECB3;strokeColor=#FF8F00;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="30" y="313" width="200" height="58" as="geometry"/>
+        <mxCell id="r2-from" value="FROM: ㉒ Protection Relays&amp;#xa;Protocol: timer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFECB3;strokeColor=#FF8F00;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="337" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r2-to" value="TO: ㉖ Oracle CIS Database&amp;#xa;Protocol: sql" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="790" y="313" width="200" height="58" as="geometry"/>
+        <mxCell id="r2-to" value="TO: ㉖ Oracle CIS Database&amp;#xa;Protocol: sql" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="770" y="337" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r2-ing" value="INGRESS&amp;#xa;route-relay-poll&amp;#xa;Protocol: timer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="14" y="188" width="235" height="52" as="geometry"/>
+        <mxCell id="r2-ing" value="INGRESS&amp;#xa;route-relay-poll&amp;#xa;Protocol: timer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="10" y="212" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r2-egr" value="EGRESS&amp;#xa;route-oracle-sp&amp;#xa;Protocol: sql" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="270" y="188" width="235" height="52" as="geometry"/>
+        <mxCell id="r2-egr" value="EGRESS&amp;#xa;route-oracle-sp&amp;#xa;Protocol: sql" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="262" y="212" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r3-from" value="FROM: ⑨ Customer Portal&amp;#xa;Protocol: platform-http" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#81C784;strokeColor=#1B5E20;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="30" y="383" width="200" height="58" as="geometry"/>
+        <mxCell id="r3-from" value="FROM: ⑨ Customer Portal&amp;#xa;Protocol: platform-http" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#81C784;strokeColor=#1B5E20;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="421" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r3-to" value="TO: ㉘ Salesforce CRM&amp;#xa;Protocol: salesforce" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="790" y="383" width="200" height="58" as="geometry"/>
+        <mxCell id="r3-to" value="TO: ㉘ Salesforce CRM&amp;#xa;Protocol: salesforce" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="770" y="421" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r3-ing" value="INGRESS&amp;#xa;route-portal-in&amp;#xa;Protocol: platform-http" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="14" y="258" width="235" height="52" as="geometry"/>
+        <mxCell id="r3-ing" value="INGRESS&amp;#xa;route-portal-in&amp;#xa;Protocol: platform-http" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="10" y="296" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r3-egr" value="EGRESS&amp;#xa;route-crm-out&amp;#xa;Protocol: salesforce" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="270" y="258" width="235" height="52" as="geometry"/>
+        <mxCell id="r3-egr" value="EGRESS&amp;#xa;route-crm-out&amp;#xa;Protocol: salesforce" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="262" y="296" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r4-from" value="FROM: ⑩ Mobile App&amp;#xa;Protocol: rest" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#81C784;strokeColor=#1B5E20;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="30" y="453" width="200" height="58" as="geometry"/>
+        <mxCell id="r4-from" value="FROM: ⑩ Mobile App&amp;#xa;Protocol: rest" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#81C784;strokeColor=#1B5E20;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="505" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r4-to" value="TO: ④ Payment Gateway&amp;#xa;Protocol: http" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="790" y="453" width="200" height="58" as="geometry"/>
+        <mxCell id="r4-to" value="TO: ④ Payment Gateway&amp;#xa;Protocol: http" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="770" y="505" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r4-ing" value="INGRESS&amp;#xa;route-mobile-in&amp;#xa;Protocol: rest" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="14" y="328" width="235" height="52" as="geometry"/>
+        <mxCell id="r4-ing" value="INGRESS&amp;#xa;route-mobile-in&amp;#xa;Protocol: rest" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="10" y="380" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r4-egr" value="EGRESS&amp;#xa;route-payment-out&amp;#xa;Protocol: http" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="270" y="328" width="235" height="52" as="geometry"/>
+        <mxCell id="r4-egr" value="EGRESS&amp;#xa;route-payment-out&amp;#xa;Protocol: http" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="262" y="380" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r5-from" value="FROM: ⑱ SCADA / RTU&amp;#xa;Protocol: cxf-soap" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFECB3;strokeColor=#FF8F00;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="30" y="523" width="200" height="58" as="geometry"/>
+        <mxCell id="r5-from" value="FROM: ⑱ SCADA / RTU&amp;#xa;Protocol: cxf-soap" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFECB3;strokeColor=#FF8F00;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="589" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r5-to" value="TO: ⑳ OMS&amp;#xa;Protocol: amqp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE082;strokeColor=#F57C00;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="790" y="523" width="200" height="58" as="geometry"/>
+        <mxCell id="r5-to" value="TO: ⑳ OMS&amp;#xa;Protocol: amqp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE082;strokeColor=#F57C00;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="770" y="589" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r5-ing" value="INGRESS&amp;#xa;route-scada-in&amp;#xa;Protocol: cxf-soap" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="14" y="398" width="235" height="52" as="geometry"/>
+        <mxCell id="r5-ing" value="INGRESS&amp;#xa;route-scada-in&amp;#xa;Protocol: cxf-soap" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="10" y="464" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r5-egr" value="EGRESS&amp;#xa;route-oms-out&amp;#xa;Protocol: amqp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="270" y="398" width="235" height="52" as="geometry"/>
+        <mxCell id="r5-egr" value="EGRESS&amp;#xa;route-oms-out&amp;#xa;Protocol: amqp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="262" y="464" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r6-from" value="FROM: ㉓ Substation HMI&amp;#xa;Protocol: platform-http" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFECB3;strokeColor=#FF8F00;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="30" y="593" width="200" height="58" as="geometry"/>
+        <mxCell id="r6-from" value="FROM: ㉓ Substation HMI&amp;#xa;Protocol: platform-http" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFECB3;strokeColor=#FF8F00;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="673" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r6-to" value="TO: ⑲ DMS / EMS&amp;#xa;Protocol: jms" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE082;strokeColor=#F57C00;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="790" y="593" width="200" height="58" as="geometry"/>
+        <mxCell id="r6-to" value="TO: ⑲ DMS / EMS&amp;#xa;Protocol: jms" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE082;strokeColor=#F57C00;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="770" y="673" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r6-ing" value="INGRESS&amp;#xa;route-hmi-in&amp;#xa;Protocol: platform-http" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="14" y="468" width="235" height="52" as="geometry"/>
+        <mxCell id="r6-ing" value="INGRESS&amp;#xa;route-hmi-in&amp;#xa;Protocol: platform-http" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="10" y="548" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r6-egr" value="EGRESS&amp;#xa;route-dms-out&amp;#xa;Protocol: jms" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="270" y="468" width="235" height="52" as="geometry"/>
+        <mxCell id="r6-egr" value="EGRESS&amp;#xa;route-dms-out&amp;#xa;Protocol: jms" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="262" y="548" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r7-from" value="FROM: ③ Weather API&amp;#xa;Protocol: http" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="30" y="663" width="200" height="58" as="geometry"/>
+        <mxCell id="r7-from" value="FROM: ③ Weather API&amp;#xa;Protocol: http" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="757" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r7-to" value="TO: ① ISO/RTO Market&amp;#xa;Protocol: ftp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="790" y="663" width="200" height="58" as="geometry"/>
+        <mxCell id="r7-to" value="TO: ① ISO/RTO Market&amp;#xa;Protocol: ftp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="770" y="757" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r7-ing" value="INGRESS&amp;#xa;route-weather-in&amp;#xa;Protocol: http" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="14" y="538" width="235" height="52" as="geometry"/>
+        <mxCell id="r7-ing" value="INGRESS&amp;#xa;route-weather-in&amp;#xa;Protocol: http" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="10" y="632" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r7-egr" value="EGRESS&amp;#xa;route-iso-bid&amp;#xa;Protocol: ftp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="270" y="538" width="235" height="52" as="geometry"/>
+        <mxCell id="r7-egr" value="EGRESS&amp;#xa;route-iso-bid&amp;#xa;Protocol: ftp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="262" y="632" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r8-from" value="FROM: ⑥ DER / Solar farms&amp;#xa;Protocol: rest" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="30" y="733" width="200" height="58" as="geometry"/>
+        <mxCell id="r8-from" value="FROM: ⑥ DER / Solar farms&amp;#xa;Protocol: rest" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="841" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r8-to" value="TO: ㉖ Oracle CIS Database&amp;#xa;Protocol: jdbc" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="790" y="733" width="200" height="58" as="geometry"/>
+        <mxCell id="r8-to" value="TO: ㉖ Oracle CIS Database&amp;#xa;Protocol: jdbc" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="770" y="841" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r8-ing" value="INGRESS&amp;#xa;route-der-in&amp;#xa;Protocol: rest" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="14" y="608" width="235" height="52" as="geometry"/>
+        <mxCell id="r8-ing" value="INGRESS&amp;#xa;route-der-in&amp;#xa;Protocol: rest" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="10" y="716" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r8-egr" value="EGRESS&amp;#xa;route-oracle-cis-out&amp;#xa;Protocol: jdbc" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="270" y="608" width="235" height="52" as="geometry"/>
+        <mxCell id="r8-egr" value="EGRESS&amp;#xa;route-oracle-cis-out&amp;#xa;Protocol: jdbc" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="262" y="716" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r9-from" value="FROM: ⑦ EV Charging Network&amp;#xa;Protocol: rest" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="30" y="803" width="200" height="58" as="geometry"/>
+        <mxCell id="r9-from" value="FROM: ⑦ EV Charging Network&amp;#xa;Protocol: rest" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="925" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r9-to" value="TO: ㉔ MDM&amp;#xa;Protocol: kafka" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE082;strokeColor=#F57C00;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="790" y="803" width="200" height="58" as="geometry"/>
+        <mxCell id="r9-to" value="TO: ㉔ MDM&amp;#xa;Protocol: kafka" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE082;strokeColor=#F57C00;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="770" y="925" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r9-ing" value="INGRESS&amp;#xa;route-ev-in&amp;#xa;Protocol: rest" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="14" y="678" width="235" height="52" as="geometry"/>
+        <mxCell id="r9-ing" value="INGRESS&amp;#xa;route-ev-in&amp;#xa;Protocol: rest" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="10" y="800" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r9-egr" value="EGRESS&amp;#xa;route-mdm-out&amp;#xa;Protocol: kafka" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="270" y="678" width="235" height="52" as="geometry"/>
+        <mxCell id="r9-egr" value="EGRESS&amp;#xa;route-mdm-out&amp;#xa;Protocol: kafka" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="262" y="800" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r10-from" value="FROM: ⑬ Webhook partners&amp;#xa;Protocol: webhook" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#81C784;strokeColor=#1B5E20;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="30" y="873" width="200" height="58" as="geometry"/>
+        <mxCell id="r10-from" value="FROM: ⑬ Webhook partners&amp;#xa;Protocol: webhook" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#81C784;strokeColor=#1B5E20;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="1009" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r10-to" value="TO: ⑤ Credit Bureau&amp;#xa;Protocol: http" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="790" y="873" width="200" height="58" as="geometry"/>
+        <mxCell id="r10-to" value="TO: ⑤ Credit Bureau&amp;#xa;Protocol: http" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="770" y="1009" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r10-ing" value="INGRESS&amp;#xa;route-webhook-in&amp;#xa;Protocol: webhook" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="14" y="748" width="235" height="52" as="geometry"/>
+        <mxCell id="r10-ing" value="INGRESS&amp;#xa;route-webhook-in&amp;#xa;Protocol: webhook" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="10" y="884" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r10-egr" value="EGRESS&amp;#xa;route-credit-out&amp;#xa;Protocol: http" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="270" y="748" width="235" height="52" as="geometry"/>
+        <mxCell id="r10-egr" value="EGRESS&amp;#xa;route-credit-out&amp;#xa;Protocol: http" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="262" y="884" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r11-from" value="FROM: ⑭ Wholesale trader&amp;#xa;Protocol: kafka" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="30" y="943" width="200" height="58" as="geometry"/>
+        <mxCell id="r11-from" value="FROM: ⑭ Wholesale trader&amp;#xa;Protocol: kafka" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="1093" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r11-to" value="TO: ① ISO/RTO Market&amp;#xa;Protocol: sftp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="790" y="943" width="200" height="58" as="geometry"/>
+        <mxCell id="r11-to" value="TO: ① ISO/RTO Market&amp;#xa;Protocol: sftp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="770" y="1093" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r11-ing" value="INGRESS&amp;#xa;route-price-in&amp;#xa;Protocol: kafka" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="14" y="818" width="235" height="52" as="geometry"/>
+        <mxCell id="r11-ing" value="INGRESS&amp;#xa;route-price-in&amp;#xa;Protocol: kafka" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="10" y="968" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r11-egr" value="EGRESS&amp;#xa;route-iso-settle&amp;#xa;Protocol: sftp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="270" y="818" width="235" height="52" as="geometry"/>
+        <mxCell id="r11-egr" value="EGRESS&amp;#xa;route-iso-settle&amp;#xa;Protocol: sftp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="262" y="968" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r12-from" value="FROM: ⑮ Cloud SaaS&amp;#xa;Protocol: aws2-sqs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="30" y="1013" width="200" height="58" as="geometry"/>
+        <mxCell id="r12-from" value="FROM: ⑮ Cloud SaaS&amp;#xa;Protocol: aws2-sqs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="1177" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r12-to" value="TO: ㉙ ServiceNow&amp;#xa;Protocol: servicenow" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="790" y="1013" width="200" height="58" as="geometry"/>
+        <mxCell id="r12-to" value="TO: ㉙ ServiceNow&amp;#xa;Protocol: servicenow" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="770" y="1177" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r12-ing" value="INGRESS&amp;#xa;route-saas-in&amp;#xa;Protocol: aws2-sqs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="14" y="888" width="235" height="52" as="geometry"/>
+        <mxCell id="r12-ing" value="INGRESS&amp;#xa;route-saas-in&amp;#xa;Protocol: aws2-sqs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="10" y="1052" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r12-egr" value="EGRESS&amp;#xa;route-itsm-out&amp;#xa;Protocol: servicenow" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="270" y="888" width="235" height="52" as="geometry"/>
+        <mxCell id="r12-egr" value="EGRESS&amp;#xa;route-itsm-out&amp;#xa;Protocol: servicenow" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="262" y="1052" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r13-from" value="FROM: ⑰ Grid IoT Sensors&amp;#xa;Protocol: coap" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFECB3;strokeColor=#FF8F00;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="30" y="1083" width="200" height="58" as="geometry"/>
+        <mxCell id="r13-from" value="FROM: ⑰ Grid IoT Sensors&amp;#xa;Protocol: coap" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFECB3;strokeColor=#FF8F00;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="1261" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r13-to" value="TO: ㉑ ADMS / GIS&amp;#xa;Protocol: http" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE082;strokeColor=#F57C00;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="790" y="1083" width="200" height="58" as="geometry"/>
+        <mxCell id="r13-to" value="TO: ㉑ ADMS / GIS&amp;#xa;Protocol: http" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE082;strokeColor=#F57C00;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="770" y="1261" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r13-ing" value="INGRESS&amp;#xa;route-iot-ingest&amp;#xa;Protocol: coap" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="14" y="958" width="235" height="52" as="geometry"/>
+        <mxCell id="r13-ing" value="INGRESS&amp;#xa;route-iot-ingest&amp;#xa;Protocol: coap" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="10" y="1136" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r13-egr" value="EGRESS&amp;#xa;route-gis-out&amp;#xa;Protocol: http" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="270" y="958" width="235" height="52" as="geometry"/>
+        <mxCell id="r13-egr" value="EGRESS&amp;#xa;route-gis-out&amp;#xa;Protocol: http" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="262" y="1136" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r14-from" value="FROM: ㉒ Protection Relays&amp;#xa;Protocol: file" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFECB3;strokeColor=#FF8F00;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="30" y="1153" width="200" height="58" as="geometry"/>
+        <mxCell id="r14-from" value="FROM: ㉒ Protection Relays&amp;#xa;Protocol: file" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFECB3;strokeColor=#FF8F00;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="1345" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r14-to" value="TO: ㉕ Control Room&amp;#xa;Protocol: slack" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE082;strokeColor=#F57C00;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="790" y="1153" width="200" height="58" as="geometry"/>
+        <mxCell id="r14-to" value="TO: ㉕ Control Room&amp;#xa;Protocol: slack" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE082;strokeColor=#F57C00;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="770" y="1345" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r14-ing" value="INGRESS&amp;#xa;route-relay-in&amp;#xa;Protocol: file" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="14" y="1028" width="235" height="52" as="geometry"/>
+        <mxCell id="r14-ing" value="INGRESS&amp;#xa;route-relay-in&amp;#xa;Protocol: file" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="10" y="1220" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r14-egr" value="EGRESS&amp;#xa;route-control-out&amp;#xa;Protocol: slack" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="270" y="1028" width="235" height="52" as="geometry"/>
+        <mxCell id="r14-egr" value="EGRESS&amp;#xa;route-control-out&amp;#xa;Protocol: slack" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="262" y="1220" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r15-from" value="FROM: ⑧ Adjacent Utility&amp;#xa;Protocol: amqp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="30" y="1223" width="200" height="58" as="geometry"/>
+        <mxCell id="r15-from" value="FROM: ⑧ Adjacent Utility&amp;#xa;Protocol: amqp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="1429" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r15-to" value="TO: ⑲ DMS / EMS&amp;#xa;Protocol: jms" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE082;strokeColor=#F57C00;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="790" y="1223" width="200" height="58" as="geometry"/>
+        <mxCell id="r15-to" value="TO: ⑲ DMS / EMS&amp;#xa;Protocol: jms" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE082;strokeColor=#F57C00;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="770" y="1429" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r15-ing" value="INGRESS&amp;#xa;route-mutualaid-in&amp;#xa;Protocol: amqp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="14" y="1098" width="235" height="52" as="geometry"/>
+        <mxCell id="r15-ing" value="INGRESS&amp;#xa;route-mutualaid-in&amp;#xa;Protocol: amqp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="10" y="1304" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r15-egr" value="EGRESS&amp;#xa;route-dms-out&amp;#xa;Protocol: jms" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="270" y="1098" width="235" height="52" as="geometry"/>
+        <mxCell id="r15-egr" value="EGRESS&amp;#xa;route-dms-out&amp;#xa;Protocol: jms" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="262" y="1304" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r16-from" value="FROM: ㉝ Oracle CIS Change Data&amp;#xa;Protocol: debezium-oracle" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="30" y="1293" width="200" height="58" as="geometry"/>
+        <mxCell id="r16-from" value="FROM: ㉝ Oracle CIS Change Data&amp;#xa;Protocol: debezium-oracle" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="1513" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r16-to" value="TO: ⑪ SMS Gateway&amp;#xa;Protocol: smpp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#90CAF9;strokeColor=#0D47A1;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="790" y="1293" width="200" height="58" as="geometry"/>
+        <mxCell id="r16-to" value="TO: ⑪ SMS Gateway&amp;#xa;Protocol: smpp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#90CAF9;strokeColor=#0D47A1;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="770" y="1513" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r16-ing" value="INGRESS&amp;#xa;route-oracle-cdc&amp;#xa;Protocol: debezium-oracle" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="14" y="1168" width="235" height="52" as="geometry"/>
+        <mxCell id="r16-ing" value="INGRESS&amp;#xa;route-oracle-cdc&amp;#xa;Protocol: debezium-oracle" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="10" y="1388" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r16-egr" value="EGRESS&amp;#xa;route-sms-out&amp;#xa;Protocol: smpp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="270" y="1168" width="235" height="52" as="geometry"/>
+        <mxCell id="r16-egr" value="EGRESS&amp;#xa;route-sms-out&amp;#xa;Protocol: smpp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="262" y="1388" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r17-from" value="FROM: ㉒ Billing Scheduler&amp;#xa;Protocol: timer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFECB3;strokeColor=#FF8F00;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="30" y="1363" width="200" height="58" as="geometry"/>
+        <mxCell id="r17-from" value="FROM: ㉒ Billing Scheduler&amp;#xa;Protocol: timer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFECB3;strokeColor=#FF8F00;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="1597" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r17-to" value="TO: ⑫ Email / Billing&amp;#xa;Protocol: mail" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#90CAF9;strokeColor=#0D47A1;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="790" y="1363" width="200" height="58" as="geometry"/>
+        <mxCell id="r17-to" value="TO: ⑫ Email / Billing&amp;#xa;Protocol: mail" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#90CAF9;strokeColor=#0D47A1;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="770" y="1597" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r17-ing" value="INGRESS&amp;#xa;route-relay-poll&amp;#xa;Protocol: timer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="14" y="1238" width="235" height="52" as="geometry"/>
+        <mxCell id="r17-ing" value="INGRESS&amp;#xa;route-relay-poll&amp;#xa;Protocol: timer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="10" y="1472" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r17-egr" value="EGRESS&amp;#xa;route-bill-email&amp;#xa;Protocol: mail" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="270" y="1238" width="235" height="52" as="geometry"/>
+        <mxCell id="r17-egr" value="EGRESS&amp;#xa;route-bill-email&amp;#xa;Protocol: mail" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="262" y="1472" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r18-from" value="FROM: ⑧ Adjacent Utility&amp;#xa;Protocol: file" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="30" y="1433" width="200" height="58" as="geometry"/>
+        <mxCell id="r18-from" value="FROM: ⑧ Adjacent Utility&amp;#xa;Protocol: file" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="1681" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r18-to" value="TO: ② FERC / State PUC&amp;#xa;Protocol: sftp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="790" y="1433" width="200" height="58" as="geometry"/>
+        <mxCell id="r18-to" value="TO: ② FERC / State PUC&amp;#xa;Protocol: sftp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="770" y="1681" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r18-ing" value="INGRESS&amp;#xa;route-mutualaid-in&amp;#xa;Protocol: file" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="14" y="1308" width="235" height="52" as="geometry"/>
+        <mxCell id="r18-ing" value="INGRESS&amp;#xa;route-mutualaid-in&amp;#xa;Protocol: file" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="10" y="1556" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r18-egr" value="EGRESS&amp;#xa;route-ferc-file&amp;#xa;Protocol: sftp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="270" y="1308" width="235" height="52" as="geometry"/>
+        <mxCell id="r18-egr" value="EGRESS&amp;#xa;route-ferc-file&amp;#xa;Protocol: sftp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="262" y="1556" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r19-from" value="FROM: ㉝ Oracle CIS Change Data&amp;#xa;Protocol: debezium-oracle" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="30" y="1503" width="200" height="58" as="geometry"/>
+        <mxCell id="r19-from" value="FROM: ㉝ Oracle CIS Change Data&amp;#xa;Protocol: debezium-oracle" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="1765" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r19-to" value="TO: ㉗ SAP ERP&amp;#xa;Protocol: cxf-soap" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="790" y="1503" width="200" height="58" as="geometry"/>
+        <mxCell id="r19-to" value="TO: ㉗ SAP ERP&amp;#xa;Protocol: cxf-soap" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="770" y="1765" width="200" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="r19-ing" value="INGRESS&amp;#xa;route-oracle-cdc&amp;#xa;Protocol: debezium-oracle" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="14" y="1378" width="235" height="52" as="geometry"/>
+        <mxCell id="r19-ing" value="INGRESS&amp;#xa;route-oracle-cdc&amp;#xa;Protocol: debezium-oracle" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="10" y="1640" width="188" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="r19-egr" value="EGRESS&amp;#xa;route-sap-out&amp;#xa;Protocol: cxf-soap" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="camel-hub">
-          <mxGeometry x="270" y="1378" width="235" height="52" as="geometry"/>
+        <mxCell id="r19-egr" value="EGRESS&amp;#xa;route-sap-out&amp;#xa;Protocol: cxf-soap" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=8;fontStyle=0;align=left;verticalAlign=middle;spacingLeft=6;spacingTop=4;" vertex="1" parent="camel-hub">
+          <mxGeometry x="262" y="1640" width="188" height="56" as="geometry"/>
         </mxCell>
         <mxCell id="footer" value="20 flows  |  All ingress &amp; egress inside one Apache Camel box  |  diagrams.net" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=9;fontStyle=0;fontColor=#78909C;" vertex="1" parent="1">
-          <mxGeometry x="20" y="1584" width="970" height="20" as="geometry"/>
+          <mxGeometry x="20" y="1856" width="970" height="20" as="geometry"/>
         </mxCell>
         <mxCell id="r0-e1" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#2E7D32;strokeWidth=2;endArrow=classic;endFill=1;" edge="1" parent="1" source="r0-from" target="r0-ing">
           <mxGeometry relative="1" as="geometry"/>
