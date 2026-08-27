@@ -67,17 +67,17 @@
         <mxCell id="out11" value="㉕ Control Room&amp;#xa;Protocol: slack&amp;#xa;Critical alerts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE082;strokeColor=#F57C00;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="44" y="966" width="250" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="out12" value="㉖ CIS / Billing&amp;#xa;Protocol: jdbc&amp;#xa;Billing updates" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="44" y="1046" width="250" height="68" as="geometry"/>
+        <mxCell id="out12" value="㉖ Oracle CIS Database&amp;#xa;Protocol: jdbc&amp;#xa;Protocol: sql&amp;#xa;Billing, rates &amp; customer master" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="44" y="1046" width="250" height="84" as="geometry"/>
         </mxCell>
         <mxCell id="out13" value="㉗ SAP ERP&amp;#xa;Protocol: cxf-soap&amp;#xa;Finance / GL posting" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="44" y="1126" width="250" height="68" as="geometry"/>
+          <mxGeometry x="44" y="1142" width="250" height="68" as="geometry"/>
         </mxCell>
         <mxCell id="out14" value="㉘ Salesforce CRM&amp;#xa;Protocol: salesforce&amp;#xa;Customer 360 sync" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="44" y="1206" width="250" height="68" as="geometry"/>
+          <mxGeometry x="44" y="1222" width="250" height="68" as="geometry"/>
         </mxCell>
         <mxCell id="out15" value="㉙ ServiceNow&amp;#xa;Protocol: servicenow&amp;#xa;Field crew work orders" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="44" y="1286" width="250" height="68" as="geometry"/>
+          <mxGeometry x="44" y="1302" width="250" height="68" as="geometry"/>
         </mxCell>
         <mxCell id="in1" value="③ Weather API&amp;#xa;Protocol: http&amp;#xa;Load forecast data" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="1348" y="150" width="250" height="68" as="geometry"/>
@@ -121,7 +121,7 @@
         <mxCell id="in14" value="㉓ Substation HMI&amp;#xa;Protocol: platform-http&amp;#xa;Local substation API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFECB3;strokeColor=#FF8F00;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="1348" y="1238" width="250" height="68" as="geometry"/>
         </mxCell>
-        <mxCell id="in15" value="㉝ CIS Change Data&amp;#xa;Protocol: debezium-postgres&amp;#xa;Real-time CDC events" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="in15" value="㉝ Oracle CIS Change Data&amp;#xa;Protocol: debezium-oracle&amp;#xa;Real-time Oracle CDC events" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="1348" y="1318" width="250" height="68" as="geometry"/>
         </mxCell>
         <mxCell id="camel-core" value="CamelContext&amp;#xa;Integration Runtime&amp;#xa;Spring Boot / Kubernetes" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFCC80;strokeColor=#E65100;strokeWidth=3;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
@@ -190,7 +190,7 @@
         <mxCell id="route-in-15" value="Protocol: timer&amp;#xa;Route: route-relay-poll&amp;#xa;Scheduled relay poll" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="845" y="665" width="425" height="44" as="geometry"/>
         </mxCell>
-        <mxCell id="route-in-16" value="Protocol: debezium-postgres&amp;#xa;Route: route-cis-cdc&amp;#xa;CIS change-data-capture" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="route-in-16" value="Protocol: debezium-oracle&amp;#xa;Route: route-oracle-cdc&amp;#xa;Oracle CIS change-data-capture" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="410" y="715" width="425" height="44" as="geometry"/>
         </mxCell>
         <mxCell id="egress-lbl" value="EGRESS ROUTES (Camel → to)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontStyle=1;fontColor=#1565C0;" vertex="1" parent="1">
@@ -229,23 +229,26 @@
         <mxCell id="route-out-10" value="Protocol: kafka&amp;#xa;Route: route-mdm-out&amp;#xa;MDM validated reads" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="410" y="1049" width="425" height="44" as="geometry"/>
         </mxCell>
-        <mxCell id="route-out-11" value="Protocol: jdbc&amp;#xa;Route: route-cis-out&amp;#xa;CIS billing update" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="route-out-11" value="Protocol: jdbc&amp;#xa;Route: route-oracle-cis-out&amp;#xa;Oracle CIS billing update" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="845" y="1049" width="425" height="44" as="geometry"/>
         </mxCell>
-        <mxCell id="route-out-12" value="Protocol: jdbc&amp;#xa;Route: route-dwh-out&amp;#xa;Data warehouse load" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="route-out-12" value="Protocol: sql&amp;#xa;Route: route-oracle-sp&amp;#xa;Oracle stored procedures (billing cycle)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="410" y="1099" width="425" height="44" as="geometry"/>
         </mxCell>
-        <mxCell id="route-out-13" value="Protocol: cxf-soap&amp;#xa;Route: route-sap-out&amp;#xa;SAP ERP GL posting" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="route-out-13" value="Protocol: jdbc&amp;#xa;Route: route-dwh-out&amp;#xa;Data warehouse load" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="845" y="1099" width="425" height="44" as="geometry"/>
         </mxCell>
-        <mxCell id="route-out-14" value="Protocol: salesforce&amp;#xa;Route: route-crm-out&amp;#xa;Salesforce Customer 360" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="route-out-14" value="Protocol: cxf-soap&amp;#xa;Route: route-sap-out&amp;#xa;SAP ERP GL posting" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="410" y="1149" width="425" height="44" as="geometry"/>
         </mxCell>
-        <mxCell id="route-out-15" value="Protocol: servicenow&amp;#xa;Route: route-itsm-out&amp;#xa;ServiceNow work orders" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="route-out-15" value="Protocol: salesforce&amp;#xa;Route: route-crm-out&amp;#xa;Salesforce Customer 360" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="845" y="1149" width="425" height="44" as="geometry"/>
         </mxCell>
-        <mxCell id="route-out-16" value="Protocol: slack&amp;#xa;Route: route-control-out&amp;#xa;Control room alerts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="route-out-16" value="Protocol: servicenow&amp;#xa;Route: route-itsm-out&amp;#xa;ServiceNow work orders" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="410" y="1199" width="425" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="route-out-17" value="Protocol: slack&amp;#xa;Route: route-control-out&amp;#xa;Control room alerts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=1;fontSize=9;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="845" y="1199" width="425" height="44" as="geometry"/>
         </mxCell>
         <mxCell id="internal-lbl" value="PLATFORM &amp; INTERNAL ROUTES" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontStyle=1;fontColor=#6A1B9A;" vertex="1" parent="1">
           <mxGeometry x="410" y="1261" width="400" height="18" as="geometry"/>
@@ -283,10 +286,10 @@
         <mxCell id="footer-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FAFAFA;strokeColor=#CFD8DC;strokeWidth=1;fontSize=10;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="30" y="1685" width="1620" height="90" as="geometry"/>
         </mxCell>
-        <mxCell id="footer-t" value="Unique Camel protocols: 30 — amqp, aws2-s3, aws2-sqs, coap, cxf-soap, debezium-postgres, elasticsearch, file, ftp, hashicorp-vault, http, jdbc, jms, kafka, mail, micrometer, mongodb, opentelemetry2, paho-mqtt5, platform-http, redis, rest, salesforce, seda, servicenow, sftp, slack, smpp, timer, webhook" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#37474F;" vertex="1" parent="1">
+        <mxCell id="footer-t" value="Unique Camel protocols: 31 — amqp, aws2-s3, aws2-sqs, coap, cxf-soap, debezium-oracle, elasticsearch, file, ftp, hashicorp-vault, http, jdbc, jms, kafka, mail, micrometer, mongodb, opentelemetry2, paho-mqtt5, platform-http, redis, rest, salesforce, seda, servicenow, sftp, slack, smpp, sql, timer, webhook" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#37474F;" vertex="1" parent="1">
           <mxGeometry x="45" y="1693" width="1590" height="36" as="geometry"/>
         </mxCell>
-        <mxCell id="footer-d" value="Ingress routes: 17  |  Egress routes: 17  |  Platform routes: 9  |  Open: https://app.diagrams.net" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontStyle=0;fontColor=#78909C;" vertex="1" parent="1">
+        <mxCell id="footer-d" value="Ingress routes: 17  |  Egress routes: 18  |  Platform routes: 9  |  Oracle: jdbc, sql, debezium-oracle  |  Open: https://app.diagrams.net" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontStyle=0;fontColor=#78909C;" vertex="1" parent="1">
           <mxGeometry x="45" y="1733" width="1590" height="20" as="geometry"/>
         </mxCell>
         <mxCell id="flow-in-bus" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2E7D32;strokeWidth=4;endArrow=classic;endFill=1;" edge="1" parent="1" source="in-bus" target="camel-in-port">

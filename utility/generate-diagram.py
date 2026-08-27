@@ -14,7 +14,7 @@ OUTPUTS = [
     ("㉑", "ADMS / GIS", ["http"], "Crew routing", "#FFE082", "#F57C00"),
     ("㉔", "MDM", ["kafka"], "Validated reads publish", "#FFE082", "#F57C00"),
     ("㉕", "Control Room", ["slack"], "Critical alerts", "#FFE082", "#F57C00"),
-    ("㉖", "CIS / Billing", ["jdbc"], "Billing updates", "#BBDEFB", "#1565C0"),
+    ("㉖", "Oracle CIS Database", ["jdbc", "sql"], "Billing, rates & customer master", "#BBDEFB", "#1565C0"),
     ("㉗", "SAP ERP", ["cxf-soap"], "Finance / GL posting", "#BBDEFB", "#1565C0"),
     ("㉘", "Salesforce CRM", ["salesforce"], "Customer 360 sync", "#BBDEFB", "#1565C0"),
     ("㉙", "ServiceNow", ["servicenow"], "Field crew work orders", "#BBDEFB", "#1565C0"),
@@ -35,7 +35,7 @@ INPUTS = [
     ("⑱", "SCADA / RTU", ["cxf-soap"], "Legacy grid events", "#FFECB3", "#FF8F00"),
     ("㉒", "Protection Relays", ["timer", "file"], "Fault event logs", "#FFECB3", "#FF8F00"),
     ("㉓", "Substation HMI", ["platform-http"], "Local substation API", "#FFECB3", "#FF8F00"),
-    ("㉝", "CIS Change Data", ["debezium-postgres"], "Real-time CDC events", "#A5D6A7", "#2E7D32"),
+    ("㉝", "Oracle CIS Change Data", ["debezium-oracle"], "Real-time Oracle CDC events", "#A5D6A7", "#2E7D32"),
 ]
 
 # Camel hub routes — one touch point per protocol (direction, protocol, route purpose)
@@ -56,7 +56,7 @@ CAMEL_INGRESS_ROUTES = [
     ("file", "route-mutualaid-in", "Adjacent utility files"),
     ("amqp", "route-mutualaid-in", "Mutual aid messages"),
     ("timer", "route-relay-poll", "Scheduled relay poll"),
-    ("debezium-postgres", "route-cis-cdc", "CIS change-data-capture"),
+    ("debezium-oracle", "route-oracle-cdc", "Oracle CIS change-data-capture"),
 ]
 
 CAMEL_EGRESS_ROUTES = [
@@ -71,7 +71,8 @@ CAMEL_EGRESS_ROUTES = [
     ("jms", "route-dms-out", "DMS switch orders"),
     ("amqp", "route-oms-out", "OMS outage tickets"),
     ("kafka", "route-mdm-out", "MDM validated reads"),
-    ("jdbc", "route-cis-out", "CIS billing update"),
+    ("jdbc", "route-oracle-cis-out", "Oracle CIS billing update"),
+    ("sql", "route-oracle-sp", "Oracle stored procedures (billing cycle)"),
     ("jdbc", "route-dwh-out", "Data warehouse load"),
     ("cxf-soap", "route-sap-out", "SAP ERP GL posting"),
     ("salesforce", "route-crm-out", "Salesforce Customer 360"),
@@ -294,7 +295,7 @@ fy = 95 + zone_h + 20
 cells.append(rect("footer-box", "", 30, fy, PAGE_W - 60, 90, "#FAFAFA", "#CFD8DC"))
 proto_list = ", ".join(sorted(all_protocols))
 cells.append(text("footer-t", f"Unique Camel protocols: {len(all_protocols)} — {proto_list}", 45, fy + 8, PAGE_W - 90, 36, 10, "#37474F", True, "left"))
-cells.append(text("footer-d", "Ingress routes: 17  |  Egress routes: 17  |  Platform routes: 9  |  Open: https://app.diagrams.net", 45, fy + 48, PAGE_W - 90, 20, 10, "#78909C", False, "left"))
+cells.append(text("footer-d", "Ingress routes: 17  |  Egress routes: 18  |  Platform routes: 9  |  Oracle: jdbc, sql, debezium-oracle  |  Open: https://app.diagrams.net", 45, fy + 48, PAGE_W - 90, 20, 10, "#78909C", False, "left"))
 
 xml = f'''<mxfile host="app.diagrams.net" modified="2026-08-27T23:25:00.000Z" agent="Cursor" version="24.7.0" type="device">
   <diagram id="utility-camel-v4" name="Electricity Utility Camel Integration">
