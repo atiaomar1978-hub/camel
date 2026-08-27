@@ -1,310 +1,300 @@
 #!/usr/bin/env python3
-"""Generate electricity utility Camel integration draw.io diagram (v4)."""
+"""Generate electricity utility Camel integration draw.io diagram (v5 — paired rows)."""
 
-# (id, system name, [protocols], description, fill, stroke)
-OUTPUTS = [
-    ("①", "ISO/RTO Market", ["ftp", "sftp"], "Day-ahead bids", "#BBDEFB", "#1565C0"),
-    ("②", "FERC / State PUC", ["sftp"], "Compliance filings", "#BBDEFB", "#1565C0"),
-    ("④", "Payment Gateway", ["http"], "Card / ACH charges", "#BBDEFB", "#1565C0"),
-    ("⑤", "Credit Bureau", ["http"], "Credit check requests", "#BBDEFB", "#1565C0"),
-    ("⑪", "SMS Gateway", ["smpp"], "Outage alerts", "#90CAF9", "#0D47A1"),
-    ("⑫", "Email / Billing", ["mail"], "Statements & e-bills", "#90CAF9", "#0D47A1"),
-    ("⑲", "DMS / EMS", ["jms"], "Switch orders", "#FFE082", "#F57C00"),
-    ("⑳", "OMS", ["amqp"], "Outage tickets", "#FFE082", "#F57C00"),
-    ("㉑", "ADMS / GIS", ["http"], "Crew routing", "#FFE082", "#F57C00"),
-    ("㉔", "MDM", ["kafka"], "Validated reads publish", "#FFE082", "#F57C00"),
-    ("㉕", "Control Room", ["slack"], "Critical alerts", "#FFE082", "#F57C00"),
-    ("㉖", "Oracle CIS Database", ["jdbc", "sql"], "Billing, rates & customer master", "#BBDEFB", "#1565C0"),
-    ("㉗", "SAP ERP", ["cxf-soap"], "Finance / GL posting", "#BBDEFB", "#1565C0"),
-    ("㉘", "Salesforce CRM", ["salesforce"], "Customer 360 sync", "#BBDEFB", "#1565C0"),
-    ("㉙", "ServiceNow", ["servicenow"], "Field crew work orders", "#BBDEFB", "#1565C0"),
+# Each flow: input touch point → ingress route → egress route → output touch point
+# Protocol labels appear on every connecting line.
+INTEGRATION_FLOWS = [
+    {
+        "flow": "Meter-to-MDM",
+        "in_num": "⑯", "in_name": "AMI Head-End", "in_proto": "paho-mqtt5", "in_desc": "Smart meter reads",
+        "in_fill": "#FFECB3", "in_stroke": "#FF8F00",
+        "ingress_proto": "paho-mqtt5", "ingress_route": "route-ami-ingest",
+        "egress_proto": "kafka", "egress_route": "route-mdm-out",
+        "out_num": "㉔", "out_name": "MDM", "out_proto": "kafka", "out_desc": "Validated reads",
+        "out_fill": "#FFE082", "out_stroke": "#F57C00",
+    },
+    {
+        "flow": "Oracle CDC-to-Billing",
+        "in_num": "㉝", "in_name": "Oracle CIS Change Data", "in_proto": "debezium-oracle", "in_desc": "Real-time CDC",
+        "in_fill": "#A5D6A7", "in_stroke": "#2E7D32",
+        "ingress_proto": "debezium-oracle", "ingress_route": "route-oracle-cdc",
+        "egress_proto": "jdbc", "egress_route": "route-oracle-cis-out",
+        "out_num": "㉖", "out_name": "Oracle CIS Database", "out_proto": "jdbc", "out_desc": "Billing updates",
+        "out_fill": "#BBDEFB", "out_stroke": "#1565C0",
+    },
+    {
+        "flow": "Billing-Cycle-SP",
+        "in_num": "㉒", "in_name": "Protection Relays", "in_proto": "timer", "in_desc": "Scheduled poll",
+        "in_fill": "#FFECB3", "in_stroke": "#FF8F00",
+        "ingress_proto": "timer", "ingress_route": "route-relay-poll",
+        "egress_proto": "sql", "egress_route": "route-oracle-sp",
+        "out_num": "㉖", "out_name": "Oracle CIS Database", "out_proto": "sql", "out_desc": "Stored procedures",
+        "out_fill": "#BBDEFB", "out_stroke": "#1565C0",
+    },
+    {
+        "flow": "Portal-to-CRM",
+        "in_num": "⑨", "in_name": "Customer Portal", "in_proto": "platform-http", "in_desc": "Self-service API",
+        "in_fill": "#81C784", "in_stroke": "#1B5E20",
+        "ingress_proto": "platform-http", "ingress_route": "route-portal-in",
+        "egress_proto": "salesforce", "egress_route": "route-crm-out",
+        "out_num": "㉘", "out_name": "Salesforce CRM", "out_proto": "salesforce", "out_desc": "Customer 360",
+        "out_fill": "#BBDEFB", "out_stroke": "#1565C0",
+    },
+    {
+        "flow": "Mobile-to-Payment",
+        "in_num": "⑩", "in_name": "Mobile App", "in_proto": "rest", "in_desc": "Outage map / pay",
+        "in_fill": "#81C784", "in_stroke": "#1B5E20",
+        "ingress_proto": "rest", "ingress_route": "route-mobile-in",
+        "egress_proto": "http", "egress_route": "route-payment-out",
+        "out_num": "④", "out_name": "Payment Gateway", "out_proto": "http", "out_desc": "Card / ACH",
+        "out_fill": "#BBDEFB", "out_stroke": "#1565C0",
+    },
+    {
+        "flow": "SCADA-to-OMS",
+        "in_num": "⑱", "in_name": "SCADA / RTU", "in_proto": "cxf-soap", "in_desc": "Grid events",
+        "in_fill": "#FFECB3", "in_stroke": "#FF8F00",
+        "ingress_proto": "cxf-soap", "ingress_route": "route-scada-in",
+        "egress_proto": "amqp", "egress_route": "route-oms-out",
+        "out_num": "⑳", "out_name": "OMS", "out_proto": "amqp", "out_desc": "Outage tickets",
+        "out_fill": "#FFE082", "out_stroke": "#F57C00",
+    },
+    {
+        "flow": "HMI-to-DMS",
+        "in_num": "㉓", "in_name": "Substation HMI", "in_proto": "platform-http", "in_desc": "Local API",
+        "in_fill": "#FFECB3", "in_stroke": "#FF8F00",
+        "ingress_proto": "platform-http", "ingress_route": "route-hmi-in",
+        "egress_proto": "jms", "egress_route": "route-dms-out",
+        "out_num": "⑲", "out_name": "DMS / EMS", "out_proto": "jms", "out_desc": "Switch orders",
+        "out_fill": "#FFE082", "out_stroke": "#F57C00",
+    },
+    {
+        "flow": "Weather-to-ISO",
+        "in_num": "③", "in_name": "Weather API", "in_proto": "http", "in_desc": "Load forecast",
+        "in_fill": "#A5D6A7", "in_stroke": "#2E7D32",
+        "ingress_proto": "http", "ingress_route": "route-weather-in",
+        "egress_proto": "ftp", "egress_route": "route-iso-bid",
+        "out_num": "①", "out_name": "ISO/RTO Market", "out_proto": "ftp", "out_desc": "Day-ahead bids",
+        "out_fill": "#BBDEFB", "out_stroke": "#1565C0",
+    },
+    {
+        "flow": "DER-to-Oracle",
+        "in_num": "⑥", "in_name": "DER / Solar farms", "in_proto": "rest", "in_desc": "Net metering",
+        "in_fill": "#A5D6A7", "in_stroke": "#2E7D32",
+        "ingress_proto": "rest", "ingress_route": "route-der-in",
+        "egress_proto": "jdbc", "egress_route": "route-oracle-cis-out",
+        "out_num": "㉖", "out_name": "Oracle CIS Database", "out_proto": "jdbc", "out_desc": "Rate credits",
+        "out_fill": "#BBDEFB", "out_stroke": "#1565C0",
+    },
+    {
+        "flow": "EV-to-MDM",
+        "in_num": "⑦", "in_name": "EV Charging Network", "in_proto": "rest", "in_desc": "V2G telemetry",
+        "in_fill": "#A5D6A7", "in_stroke": "#2E7D32",
+        "ingress_proto": "rest", "ingress_route": "route-ev-in",
+        "egress_proto": "kafka", "egress_route": "route-mdm-out",
+        "out_num": "㉔", "out_name": "MDM", "out_proto": "kafka", "out_desc": "Validated reads",
+        "out_fill": "#FFE082", "out_stroke": "#F57C00",
+    },
+    {
+        "flow": "Webhook-to-Credit",
+        "in_num": "⑬", "in_name": "Webhook partners", "in_proto": "webhook", "in_desc": "Stripe / Gov",
+        "in_fill": "#81C784", "in_stroke": "#1B5E20",
+        "ingress_proto": "webhook", "ingress_route": "route-webhook-in",
+        "egress_proto": "http", "egress_route": "route-credit-out",
+        "out_num": "⑤", "out_name": "Credit Bureau", "out_proto": "http", "out_desc": "Credit check",
+        "out_fill": "#BBDEFB", "out_stroke": "#1565C0",
+    },
+    {
+        "flow": "Prices-to-ISO",
+        "in_num": "⑭", "in_name": "Wholesale trader", "in_proto": "kafka", "in_desc": "Price signals",
+        "in_fill": "#A5D6A7", "in_stroke": "#2E7D32",
+        "ingress_proto": "kafka", "ingress_route": "route-price-in",
+        "egress_proto": "sftp", "egress_route": "route-iso-settle",
+        "out_num": "①", "out_name": "ISO/RTO Market", "out_proto": "sftp", "out_desc": "Settlement files",
+        "out_fill": "#BBDEFB", "out_stroke": "#1565C0",
+    },
+    {
+        "flow": "SaaS-to-ITSM",
+        "in_num": "⑮", "in_name": "Cloud SaaS", "in_proto": "aws2-sqs", "in_desc": "Event ingest",
+        "in_fill": "#A5D6A7", "in_stroke": "#2E7D32",
+        "ingress_proto": "aws2-sqs", "ingress_route": "route-saas-in",
+        "egress_proto": "servicenow", "egress_route": "route-itsm-out",
+        "out_num": "㉙", "out_name": "ServiceNow", "out_proto": "servicenow", "out_desc": "Work orders",
+        "out_fill": "#BBDEFB", "out_stroke": "#1565C0",
+    },
+    {
+        "flow": "IoT-to-GIS",
+        "in_num": "⑰", "in_name": "Grid IoT Sensors", "in_proto": "coap", "in_desc": "Voltage / temp",
+        "in_fill": "#FFECB3", "in_stroke": "#FF8F00",
+        "ingress_proto": "coap", "ingress_route": "route-iot-ingest",
+        "egress_proto": "http", "egress_route": "route-gis-out",
+        "out_num": "㉑", "out_name": "ADMS / GIS", "out_proto": "http", "out_desc": "Crew routing",
+        "out_fill": "#FFE082", "out_stroke": "#F57C00",
+    },
+    {
+        "flow": "Relays-to-Control",
+        "in_num": "㉒", "in_name": "Protection Relays", "in_proto": "file", "in_desc": "Fault logs",
+        "in_fill": "#FFECB3", "in_stroke": "#FF8F00",
+        "ingress_proto": "file", "ingress_route": "route-relay-in",
+        "egress_proto": "slack", "egress_route": "route-control-out",
+        "out_num": "㉕", "out_name": "Control Room", "out_proto": "slack", "out_desc": "Critical alerts",
+        "out_fill": "#FFE082", "out_stroke": "#F57C00",
+    },
+    {
+        "flow": "MutualAid-to-DMS",
+        "in_num": "⑧", "in_name": "Adjacent Utility", "in_proto": "amqp", "in_desc": "Mutual aid",
+        "in_fill": "#A5D6A7", "in_stroke": "#2E7D32",
+        "ingress_proto": "amqp", "ingress_route": "route-mutualaid-in",
+        "egress_proto": "jms", "egress_route": "route-dms-out",
+        "out_num": "⑲", "out_name": "DMS / EMS", "out_proto": "jms", "out_desc": "Switch orders",
+        "out_fill": "#FFE082", "out_stroke": "#F57C00",
+    },
+    {
+        "flow": "CDC-to-SMS",
+        "in_num": "㉝", "in_name": "Oracle CIS Change Data", "in_proto": "debezium-oracle", "in_desc": "Outage trigger",
+        "in_fill": "#A5D6A7", "in_stroke": "#2E7D32",
+        "ingress_proto": "debezium-oracle", "ingress_route": "route-oracle-cdc",
+        "egress_proto": "smpp", "egress_route": "route-sms-out",
+        "out_num": "⑪", "out_name": "SMS Gateway", "out_proto": "smpp", "out_desc": "Outage alerts",
+        "out_fill": "#90CAF9", "out_stroke": "#0D47A1",
+    },
+    {
+        "flow": "Billing-to-Email",
+        "in_num": "㉒", "in_name": "Protection Relays", "in_proto": "timer", "in_desc": "Monthly trigger",
+        "in_fill": "#FFECB3", "in_stroke": "#FF8F00",
+        "ingress_proto": "timer", "ingress_route": "route-relay-poll",
+        "egress_proto": "mail", "egress_route": "route-bill-email",
+        "out_num": "⑫", "out_name": "Email / Billing", "out_proto": "mail", "out_desc": "E-bills",
+        "out_fill": "#90CAF9", "out_stroke": "#0D47A1",
+    },
+    {
+        "flow": "Aggregate-to-FERC",
+        "in_num": "⑧", "in_name": "Adjacent Utility", "in_proto": "file", "in_desc": "Compliance data",
+        "in_fill": "#A5D6A7", "in_stroke": "#2E7D32",
+        "ingress_proto": "file", "ingress_route": "route-mutualaid-in",
+        "egress_proto": "sftp", "egress_route": "route-ferc-file",
+        "out_num": "②", "out_name": "FERC / State PUC", "out_proto": "sftp", "out_desc": "Compliance filing",
+        "out_fill": "#BBDEFB", "out_stroke": "#1565C0",
+    },
+    {
+        "flow": "Billing-to-SAP",
+        "in_num": "㉝", "in_name": "Oracle CIS Change Data", "in_proto": "debezium-oracle", "in_desc": "GL events",
+        "in_fill": "#A5D6A7", "in_stroke": "#2E7D32",
+        "ingress_proto": "debezium-oracle", "ingress_route": "route-oracle-cdc",
+        "egress_proto": "cxf-soap", "egress_route": "route-sap-out",
+        "out_num": "㉗", "out_name": "SAP ERP", "out_proto": "cxf-soap", "out_desc": "Finance / GL",
+        "out_fill": "#BBDEFB", "out_stroke": "#1565C0",
+    },
 ]
 
-INPUTS = [
-    ("③", "Weather API", ["http"], "Load forecast data", "#A5D6A7", "#2E7D32"),
-    ("⑥", "DER / Solar farms", ["rest", "kafka"], "Net metering telemetry", "#A5D6A7", "#2E7D32"),
-    ("⑦", "EV Charging Network", ["rest"], "V2G telemetry", "#A5D6A7", "#2E7D32"),
-    ("⑧", "Adjacent Utility", ["file", "amqp"], "Mutual aid requests", "#A5D6A7", "#2E7D32"),
-    ("⑨", "Customer Portal", ["platform-http"], "Self-service API", "#81C784", "#1B5E20"),
-    ("⑩", "Mobile App", ["rest"], "Outage map / payments", "#81C784", "#1B5E20"),
-    ("⑬", "Webhook partners", ["webhook"], "Stripe / Gov events", "#81C784", "#1B5E20"),
-    ("⑭", "Wholesale trader", ["kafka"], "Price signals", "#A5D6A7", "#2E7D32"),
-    ("⑮", "Cloud SaaS", ["aws2-sqs"], "Event ingest", "#A5D6A7", "#2E7D32"),
-    ("⑯", "AMI Head-End", ["paho-mqtt5"], "Smart meter reads", "#FFECB3", "#FF8F00"),
-    ("⑰", "Grid IoT Sensors", ["coap"], "Voltage / temperature", "#FFECB3", "#FF8F00"),
-    ("⑱", "SCADA / RTU", ["cxf-soap"], "Legacy grid events", "#FFECB3", "#FF8F00"),
-    ("㉒", "Protection Relays", ["timer", "file"], "Fault event logs", "#FFECB3", "#FF8F00"),
-    ("㉓", "Substation HMI", ["platform-http"], "Local substation API", "#FFECB3", "#FF8F00"),
-    ("㉝", "Oracle CIS Change Data", ["debezium-oracle"], "Real-time Oracle CDC events", "#A5D6A7", "#2E7D32"),
-]
+# Layout constants — flow goes RIGHT (input) → LEFT (output)
+COL_OUT_X = 40
+COL_EGR_X = 260
+COL_CAM_X = 450
+COL_ING_X = 570
+COL_IN_X = 750
 
-# Camel hub routes — one touch point per protocol (direction, protocol, route purpose)
-CAMEL_INGRESS_ROUTES = [
-    ("paho-mqtt5", "route-ami-ingest", "AMI meter reads → VEE"),
-    ("coap", "route-iot-ingest", "Grid sensor telemetry"),
-    ("cxf-soap", "route-scada-in", "SCADA/RTU events (OT)"),
-    ("platform-http", "route-portal-in", "Customer portal API"),
-    ("platform-http", "route-hmi-in", "Substation HMI API"),
-    ("rest", "route-mobile-in", "Mobile app requests"),
-    ("rest", "route-der-in", "DER / solar enrollments"),
-    ("rest", "route-ev-in", "EV charging telemetry"),
-    ("http", "route-weather-in", "Weather forecast pull"),
-    ("webhook", "route-webhook-in", "Partner webhook events"),
-    ("kafka", "route-price-in", "Wholesale price signals"),
-    ("aws2-sqs", "route-saas-in", "Cloud SaaS events"),
-    ("file", "route-relay-in", "Protection relay logs"),
-    ("file", "route-mutualaid-in", "Adjacent utility files"),
-    ("amqp", "route-mutualaid-in", "Mutual aid messages"),
-    ("timer", "route-relay-poll", "Scheduled relay poll"),
-    ("debezium-oracle", "route-oracle-cdc", "Oracle CIS change-data-capture"),
-]
+W_OUT = 200
+W_ROUTE = 160
+W_CAM = 100
+W_IN = 200
 
-CAMEL_EGRESS_ROUTES = [
-    ("ftp", "route-iso-bid", "ISO day-ahead bid submit"),
-    ("sftp", "route-iso-settle", "ISO settlement files"),
-    ("sftp", "route-ferc-file", "Regulatory compliance filing"),
-    ("http", "route-payment-out", "Payment gateway charge"),
-    ("http", "route-credit-out", "Credit bureau inquiry"),
-    ("http", "route-gis-out", "ADMS/GIS crew routing"),
-    ("smpp", "route-sms-out", "Customer outage SMS"),
-    ("mail", "route-bill-email", "E-bill / statement email"),
-    ("jms", "route-dms-out", "DMS switch orders"),
-    ("amqp", "route-oms-out", "OMS outage tickets"),
-    ("kafka", "route-mdm-out", "MDM validated reads"),
-    ("jdbc", "route-oracle-cis-out", "Oracle CIS billing update"),
-    ("sql", "route-oracle-sp", "Oracle stored procedures (billing cycle)"),
-    ("jdbc", "route-dwh-out", "Data warehouse load"),
-    ("cxf-soap", "route-sap-out", "SAP ERP GL posting"),
-    ("salesforce", "route-crm-out", "Salesforce Customer 360"),
-    ("servicenow", "route-itsm-out", "ServiceNow work orders"),
-    ("slack", "route-control-out", "Control room alerts"),
-]
-
-CAMEL_INTERNAL_ROUTES = [
-    ("kafka", "route-event-bus", "Enterprise event backbone"),
-    ("seda", "route-buffer", "Peak-load buffering"),
-    ("mongodb", "route-outage-store", "Outage state store"),
-    ("redis", "route-cache", "Session / lookup cache"),
-    ("elasticsearch", "route-search", "Outage search index"),
-    ("aws2-s3", "route-datalake", "Interval read archive"),
-    ("hashicorp-vault", "route-secrets", "OT/IT credential lookup"),
-    ("opentelemetry2", "route-traces", "Distributed tracing"),
-    ("micrometer", "route-metrics", "Route metrics export"),
-]
-
-BOX_W = 250
-GAP = 12
-START_Y = 150
-LEFT_X = 30
-LEFT_ZONE_W = 340
-CENTER_X = 390
-CENTER_W = 900
-RIGHT_X = 1310
-RIGHT_ZONE_W = 340
-PAGE_W = 1680
+ROW_H = 58
+ROW_GAP = 14
+START_Y = 130
+PAGE_W = 980
+PAGE_H = START_Y + len(INTEGRATION_FLOWS) * (ROW_H + ROW_GAP) + 120
 
 cells = []
-edges = []
+edge_cells = []
 
 
 def esc(s):
-    return (
-        s.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace('"', "&quot;")
-    )
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
 
-def box_height(protocol_count):
-    """Base + one line per protocol + description."""
-    return 34 + protocol_count * 16 + 18
-
-
-def format_touchpoint(num, name, protocols, desc):
-    lines = [f"{num} {name}"]
-    for p in protocols:
-        lines.append(f"Protocol: {p}")
-    lines.append(desc)
-    return "&#xa;".join(lines)
-
-
-def rect(cid_val, label, x, y, w, h, fill, stroke, stroke_w=1, fontsize=10, bold=True):
+def rect(cid, label, x, y, w, h, fill, stroke, sw=1, fs=9, bold=True):
     fw = "1" if bold else "0"
-    return f'''        <mxCell id="{cid_val}" value="{esc(label)}" style="rounded=1;whiteSpace=wrap;html=1;fillColor={fill};strokeColor={stroke};strokeWidth={stroke_w};fontSize={fontsize};fontStyle={fw};align=center;verticalAlign=middle;" vertex="1" parent="1">
+    return f'''        <mxCell id="{cid}" value="{esc(label)}" style="rounded=1;whiteSpace=wrap;html=1;fillColor={fill};strokeColor={stroke};strokeWidth={sw};fontSize={fs};fontStyle={fw};align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="{x}" y="{y}" width="{w}" height="{h}" as="geometry"/>
         </mxCell>'''
 
 
-def text(cid_val, label, x, y, w, h, size=12, color="#37474F", bold=False, align="center"):
+def text(cid, label, x, y, w, h, size=12, color="#37474F", bold=False, align="center"):
     fw = "1" if bold else "0"
-    return f'''        <mxCell id="{cid_val}" value="{esc(label)}" style="text;html=1;strokeColor=none;fillColor=none;align={align};verticalAlign=middle;fontSize={size};fontStyle={fw};fontColor={color};" vertex="1" parent="1">
+    return f'''        <mxCell id="{cid}" value="{esc(label)}" style="text;html=1;strokeColor=none;fillColor=none;align={align};verticalAlign=middle;fontSize={size};fontStyle={fw};fontColor={color};" vertex="1" parent="1">
           <mxGeometry x="{x}" y="{y}" width="{w}" height="{h}" as="geometry"/>
         </mxCell>'''
 
 
-def edge(eid, src, tgt, color, width=1, dashed=False):
-    dash = "dashed=1;dashPattern=4 4;" if dashed else ""
-    return f'''        <mxCell id="{eid}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor={color};strokeWidth={width};endArrow=classic;endFill=1;{dash}" edge="1" parent="1" source="{src}" target="{tgt}">
+def edge_labeled(eid, src, tgt, proto, color, width=2):
+    """Edge with protocol label on the connecting line."""
+    return f'''        <mxCell id="{eid}" value="" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor={color};strokeWidth={width};endArrow=classic;endFill=1;" edge="1" parent="1" source="{src}" target="{tgt}">
           <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="{eid}-lbl" value="{esc(proto)}" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=9;fontStyle=1;fontColor={color};labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="{eid}">
+          <mxGeometry x="-0.1" relative="1" as="geometry"><mxPoint y="-10" as="offset"/></mxGeometry>
         </mxCell>'''
 
-# Compute side column heights
-out_heights = [box_height(len(p)) for _, _, p, _, _, _ in OUTPUTS]
-in_heights = [box_height(len(p)) for _, _, p, _, _, _ in INPUTS]
-side_content_h = sum(out_heights) + GAP * (len(OUTPUTS) - 1)
-side_content_h = max(side_content_h, sum(in_heights) + GAP * (len(INPUTS) - 1))
 
-# Camel routes section height
-ROUTE_BOX_H = 44
-ROUTE_GAP = 6
-ROUTE_COLS = 2
-ingress_rows = (len(CAMEL_INGRESS_ROUTES) + ROUTE_COLS - 1) // ROUTE_COLS
-egress_rows = (len(CAMEL_EGRESS_ROUTES) + ROUTE_COLS - 1) // ROUTE_COLS
-internal_rows = (len(CAMEL_INTERNAL_ROUTES) + 2) // 3
-routes_section_h = 50 + ingress_rows * (ROUTE_BOX_H + ROUTE_GAP) + 40 + egress_rows * (ROUTE_BOX_H + ROUTE_GAP) + 40 + internal_rows * (ROUTE_BOX_H + ROUTE_GAP) + 30
+# Title & column headers
+cells.append(text("title", "Electricity Utility — Apache Camel Paired Integration Flows", 20, 12, PAGE_W - 40, 32, 18, "#1B3A4B", True))
+cells.append(text("subtitle", "Each row: INPUT → Ingress Route ↔ Egress Route → OUTPUT  |  Protocol on every connecting line", 20, 42, PAGE_W - 40, 20, 11, "#546E7A"))
+cells.append(text("h-out", "◀ OUTPUT", COL_OUT_X, 95, W_OUT, 18, 11, "#1565C0", True))
+cells.append(text("h-egr", "EGRESS ROUTE", COL_EGR_X, 95, W_ROUTE, 18, 10, "#1565C0", True))
+cells.append(text("h-cam", "CAMEL", COL_CAM_X, 95, W_CAM, 18, 11, "#E65100", True))
+cells.append(text("h-ing", "INGRESS ROUTE", COL_ING_X, 95, W_ROUTE, 18, 10, "#2E7D32", True))
+cells.append(text("h-in", "INPUT ▶", COL_IN_X, 95, W_IN, 18, 11, "#2E7D32", True))
 
-zone_h = max(side_content_h + 60, routes_section_h + 280) + 80
-PAGE_H = zone_h + 280
+# Central Camel hub background (spine)
+hub_h = len(INTEGRATION_FLOWS) * (ROW_H + ROW_GAP) - ROW_GAP
+cells.append(rect("camel-spine", "Apache Camel&#xa;Integration&#xa;Middleware", COL_CAM_X, START_Y, W_CAM, hub_h, "#FFE0B2", "#E65100", 3, 10))
 
-# Title
-cells.append(text("title", "Electricity Utility — Apache Camel Integration Architecture", 20, 15, PAGE_W - 40, 34, 20, "#1B3A4B", True))
-cells.append(text("subtitle", "Every protocol on its own line  |  INPUT (right) → APACHE CAMEL ROUTES (center) → OUTPUT (left)", 20, 48, PAGE_W - 40, 22, 12, "#546E7A"))
+for i, f in enumerate(INTEGRATION_FLOWS):
+    y = START_Y + i * (ROW_H + ROW_GAP)
+    prefix = f"r{i}"
 
-# Zone backgrounds
-cells.append(rect("zone-out-bg", "", LEFT_X, 95, LEFT_ZONE_W, zone_h, "#E3F2FD", "#1565C0", 2))
-cells.append(rect("zone-camel-bg", "", CENTER_X, 95, CENTER_W, zone_h, "#FFF3E0", "#E65100", 4))
-cells.append(rect("zone-in-bg", "", RIGHT_X, 95, RIGHT_ZONE_W, zone_h, "#E8F5E9", "#2E7D32", 2))
+    out_label = f"{f['out_num']} {f['out_name']}&#xa;Protocol: {f['out_proto']}&#xa;{f['out_desc']}"
+    egr_label = f"EGRESS&#xa;Protocol: {f['egress_proto']}&#xa;{f['egress_route']}"
+    cam_label = f["flow"]
+    ing_label = f"INGRESS&#xa;Protocol: {f['ingress_proto']}&#xa;{f['ingress_route']}"
+    in_label = f"{f['in_num']} {f['in_name']}&#xa;Protocol: {f['in_proto']}&#xa;{f['in_desc']}"
 
-cells.append(text("lbl-out", "◀ OUTPUT / EGRESS", LEFT_X + 10, 102, LEFT_ZONE_W - 20, 20, 13, "#0D47A1", True))
-cells.append(text("lbl-camel", "APACHE CAMEL — INTEGRATION ROUTES", CENTER_X + 10, 102, CENTER_W - 20, 20, 14, "#BF360C", True))
-cells.append(text("lbl-in", "INPUT / INGRESS ▶", RIGHT_X + 10, 102, RIGHT_ZONE_W - 20, 20, 13, "#1B5E20", True))
+    out_id = f"{prefix}-out"
+    egr_id = f"{prefix}-egr"
+    cam_id = f"{prefix}-cam"
+    ing_id = f"{prefix}-ing"
+    in_id = f"{prefix}-in"
 
-# Buses
-OUT_BUS_X = LEFT_X + LEFT_ZONE_W - 28
-IN_BUS_X = RIGHT_X + 12
-cells.append(rect("out-bus", "EGRESS", OUT_BUS_X, START_Y, 14, side_content_h, "#1565C0", "#0D47A1", 2))
-cells.append(rect("in-bus", "INGRESS", IN_BUS_X, START_Y, 14, side_content_h, "#2E7D32", "#1B5E20", 2))
+    cells.append(rect(out_id, out_label, COL_OUT_X, y, W_OUT, ROW_H, f["out_fill"], f["out_stroke"]))
+    cells.append(rect(egr_id, egr_label, COL_EGR_X, y, W_ROUTE, ROW_H, "#E3F2FD", "#1565C0"))
+    cells.append(rect(cam_id, cam_label, COL_CAM_X + 8, y + 8, W_CAM - 16, ROW_H - 16, "#FFCC80", "#E65100", 2, 8))
+    cells.append(rect(ing_id, ing_label, COL_ING_X, y, W_ROUTE, ROW_H, "#E8F5E9", "#2E7D32"))
+    cells.append(rect(in_id, in_label, COL_IN_X, y, W_IN, ROW_H, f["in_fill"], f["in_stroke"]))
 
-# Output boxes
-out_ids = []
-y = START_Y
-for i, (num, name, protocols, desc, fill, stroke) in enumerate(OUTPUTS):
-    h = out_heights[i]
-    bid = f"out{i+1}"
-    out_ids.append(bid)
-    label = format_touchpoint(num, name, protocols, desc)
-    cells.append(rect(bid, label, LEFT_X + 14, y, BOX_W, h, fill, stroke, fontsize=9))
-    y += h + GAP
+    # Connections RIGHT → LEFT with protocol labels on each line
+    # Input → Ingress (ingress protocol)
+    edge_cells.append(edge_labeled(f"{prefix}-e1", in_id, ing_id, f["ingress_proto"], "#2E7D32", 2))
+    # Ingress → Camel (ingress protocol)
+    edge_cells.append(edge_labeled(f"{prefix}-e2", ing_id, cam_id, f["ingress_proto"], "#43A047", 2))
+    # Camel → Egress (egress protocol)
+    edge_cells.append(edge_labeled(f"{prefix}-e3", cam_id, egr_id, f["egress_proto"], "#1E88E5", 2))
+    # Egress → Output (egress protocol)
+    edge_cells.append(edge_labeled(f"{prefix}-e4", egr_id, out_id, f["egress_proto"], "#1565C0", 2))
 
-# Input boxes
-in_ids = []
-y = START_Y
-for i, (num, name, protocols, desc, fill, stroke) in enumerate(INPUTS):
-    h = in_heights[i]
-    bid = f"in{i+1}"
-    in_ids.append(bid)
-    label = format_touchpoint(num, name, protocols, desc)
-    cells.append(rect(bid, label, RIGHT_X + 38, y, BOX_W, h, fill, stroke, fontsize=9))
-    y += h + GAP
+# Footer
+fy = START_Y + hub_h + 20
+cells.append(rect("footer", "", 30, fy, PAGE_W - 60, 55, "#FAFAFA", "#CFD8DC"))
+cells.append(text("footer-t", f"{len(INTEGRATION_FLOWS)} paired integration flows  |  Ingress ↔ Egress routes face each other per touch point  |  Oracle: jdbc, sql, debezium-oracle", 40, fy + 6, PAGE_W - 80, 18, 10, "#37474F", True, "left"))
+cells.append(text("footer-d", "Open: https://app.diagrams.net  |  GitHub: utility/electricity-company-camel-integration-architecture.drawio", 40, fy + 28, PAGE_W - 80, 18, 9, "#78909C", False, "left"))
 
-# Camel core + ports
-cy = START_Y
-cells.append(rect("camel-core", "CamelContext&#xa;Integration Runtime&#xa;Spring Boot / Kubernetes", CENTER_X + 310, cy, 280, 85, "#FFCC80", "#E65100", 3, 12))
-cells.append(rect("camel-in-port", "INGRESS&#xa;Gateway", CENTER_X + CENTER_W - 72, cy + 12, 62, 62, "#C8E6C9", "#2E7D32", 2, 11))
-cells.append(rect("camel-out-port", "EGRESS&#xa;Gateway", CENTER_X + 12, cy + 12, 62, 62, "#BBDEFB", "#1565C0", 2, 11))
-
-# Enlarged routes section
-ry = cy + 105
-cells.append(rect("routes-panel", "", CENTER_X + 10, ry, CENTER_W - 20, routes_section_h, "#FFFFFF", "#EF6C00", 2))
-cells.append(text("routes-title", "Apache Camel Routes — One Touch Point Per Protocol", CENTER_X + 20, ry + 8, CENTER_W - 40, 22, 13, "#BF360C", True))
-
-# Ingress routes
-iy = ry + 38
-cells.append(text("ingress-lbl", "INGRESS ROUTES (from → Camel)", CENTER_X + 20, iy, 400, 18, 11, "#2E7D32", True, "left"))
-iy += 22
-route_w = (CENTER_W - 50) // 2
-ingress_route_ids = []
-for idx, (protocol, route_id, purpose) in enumerate(CAMEL_INGRESS_ROUTES):
-    col = idx % ROUTE_COLS
-    row = idx // ROUTE_COLS
-    rx = CENTER_X + 20 + col * (route_w + 10)
-    ry2 = iy + row * (ROUTE_BOX_H + ROUTE_GAP)
-    rid = f"route-in-{idx}"
-    ingress_route_ids.append(rid)
-    label = f"Protocol: {protocol}&#xa;Route: {route_id}&#xa;{purpose}"
-    cells.append(rect(rid, label, rx, ry2, route_w, ROUTE_BOX_H, "#E8F5E9", "#2E7D32", 1, 9))
-
-iy += ingress_rows * (ROUTE_BOX_H + ROUTE_GAP) + 12
-
-# Egress routes
-cells.append(text("egress-lbl", "EGRESS ROUTES (Camel → to)", CENTER_X + 20, iy, 400, 18, 11, "#1565C0", True, "left"))
-iy += 22
-egress_route_ids = []
-for idx, (protocol, route_id, purpose) in enumerate(CAMEL_EGRESS_ROUTES):
-    col = idx % ROUTE_COLS
-    row = idx // ROUTE_COLS
-    rx = CENTER_X + 20 + col * (route_w + 10)
-    ry2 = iy + row * (ROUTE_BOX_H + ROUTE_GAP)
-    rid = f"route-out-{idx}"
-    egress_route_ids.append(rid)
-    label = f"Protocol: {protocol}&#xa;Route: {route_id}&#xa;{purpose}"
-    cells.append(rect(rid, label, rx, ry2, route_w, ROUTE_BOX_H, "#E3F2FD", "#1565C0", 1, 9))
-
-iy += egress_rows * (ROUTE_BOX_H + ROUTE_GAP) + 12
-
-# Internal / platform routes
-cells.append(text("internal-lbl", "PLATFORM & INTERNAL ROUTES", CENTER_X + 20, iy, 400, 18, 11, "#6A1B9A", True, "left"))
-iy += 22
-internal_w = (CENTER_W - 60) // 3
-for idx, (protocol, route_id, purpose) in enumerate(CAMEL_INTERNAL_ROUTES):
-    col = idx % 3
-    row = idx // 3
-    rx = CENTER_X + 20 + col * (internal_w + 10)
-    ry2 = iy + row * (ROUTE_BOX_H + ROUTE_GAP)
-    label = f"Protocol: {protocol}&#xa;Route: {route_id}&#xa;{purpose}"
-    cells.append(rect(f"route-int-{idx}", label, rx, ry2, internal_w, ROUTE_BOX_H, "#F3E5F5", "#6A1B9A", 1, 9))
-
-# Patterns bar below routes
-py = ry + routes_section_h + 10
-cells.append(rect("patterns", "EIP Patterns: idempotentConsumer | circuitBreaker | deadLetterChannel | throttle | content-based-router | wireTap", CENTER_X + 10, py, CENTER_W - 20, 36, "#FFF8E1", "#F57C00", 1, 9, False))
-
-# Main flow
-edges.append(edge("flow-in-bus", "in-bus", "camel-in-port", "#2E7D32", 4))
-edges.append(edge("flow-in-core", "camel-in-port", "camel-core", "#2E7D32", 2))
-edges.append(edge("flow-core-out", "camel-core", "camel-out-port", "#1565C0", 2))
-edges.append(edge("flow-out-bus", "camel-out-port", "out-bus", "#1565C0", 4))
-
-# Connect ingress routes to gateway (sample dashed links to avoid clutter - connect panel to gateway)
-edges.append(edge("routes-to-in", "routes-panel", "camel-in-port", "#66BB6A", 1, dashed=True))
-edges.append(edge("routes-to-out", "camel-out-port", "routes-panel", "#42A5F5", 1, dashed=True))
-
-for i, iid in enumerate(in_ids):
-    edges.append(edge(f"ei{i}", iid, "in-bus", "#66BB6A", 1))
-for i, oid in enumerate(out_ids):
-    edges.append(edge(f"eo{i}", "out-bus", oid, "#42A5F5", 1))
-
-# Protocol count footer
-all_protocols = set()
-for _, _, ps, _, _, _ in OUTPUTS + INPUTS:
-    all_protocols.update(ps)
-for ps, _, _ in CAMEL_INGRESS_ROUTES + CAMEL_EGRESS_ROUTES + CAMEL_INTERNAL_ROUTES:
-    all_protocols.add(ps)
-
-fy = 95 + zone_h + 20
-cells.append(rect("footer-box", "", 30, fy, PAGE_W - 60, 90, "#FAFAFA", "#CFD8DC"))
-proto_list = ", ".join(sorted(all_protocols))
-cells.append(text("footer-t", f"Unique Camel protocols: {len(all_protocols)} — {proto_list}", 45, fy + 8, PAGE_W - 90, 36, 10, "#37474F", True, "left"))
-cells.append(text("footer-d", "Ingress routes: 17  |  Egress routes: 18  |  Platform routes: 9  |  Oracle: jdbc, sql, debezium-oracle  |  Open: https://app.diagrams.net", 45, fy + 48, PAGE_W - 90, 20, 10, "#78909C", False, "left"))
-
-xml = f'''<mxfile host="app.diagrams.net" modified="2026-08-27T23:25:00.000Z" agent="Cursor" version="24.7.0" type="device">
-  <diagram id="utility-camel-v4" name="Electricity Utility Camel Integration">
-    <mxGraphModel dx="1800" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="{PAGE_W}" pageHeight="{PAGE_H + 120}" math="0" shadow="0">
+xml = f'''<mxfile host="app.diagrams.net" modified="2026-08-27T23:35:00.000Z" agent="Cursor" version="24.7.0" type="device">
+  <diagram id="utility-camel-v5" name="Electricity Utility Camel Paired Flows">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="{PAGE_W}" pageHeight="{PAGE_H}" math="0" shadow="0">
       <root>
         <mxCell id="0"/>
         <mxCell id="1" parent="0"/>
 {chr(10).join(cells)}
-{chr(10).join(edges)}
+{chr(10).join(edge_cells)}
       </root>
     </mxGraphModel>
   </diagram>
@@ -312,6 +302,6 @@ xml = f'''<mxfile host="app.diagrams.net" modified="2026-08-27T23:25:00.000Z" ag
 '''
 
 out_path = "/workspace/utility/electricity-company-camel-integration-architecture.drawio"
-with open(out_path, "w", encoding="utf-8") as f:
-    f.write(xml)
-print(f"Written: {out_path} ({len(xml)} bytes, {len(all_protocols)} unique protocols)")
+with open(out_path, "w", encoding="utf-8") as fh:
+    fh.write(xml)
+print(f"Written: {out_path} ({len(INTEGRATION_FLOWS)} paired flows, {len(xml)} bytes)")
