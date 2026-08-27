@@ -198,16 +198,16 @@ W_EGR = 188
 
 ROW_H = 68
 ROW_GAP = 16
-CAMEL_HEADER = 48
-CAMEL_SUBTITLE_H = 22
-ROW_START = CAMEL_HEADER + CAMEL_SUBTITLE_H + 8
-ING_X = 10
-EGR_X = 262
+CAMEL_HEADER = 54
+CAMEL_SUBTITLE_H = 0
+ROW_START = CAMEL_HEADER + 14
+ING_X = 12
+EGR_X = 258
 ROUTE_FS = 8
 ROUTE_H_PAD = 12
 START_Y = 125
 
-hub_content_h = CAMEL_SUBTITLE_H + 8 + len(INTEGRATION_FLOWS) * (ROW_H + ROW_GAP) - ROW_GAP
+hub_content_h = 14 + len(INTEGRATION_FLOWS) * (ROW_H + ROW_GAP) - ROW_GAP
 HUB_H = CAMEL_HEADER + hub_content_h + 20
 
 PAGE_W = 1010
@@ -235,8 +235,8 @@ def route_box(cid, label, x, y, w, h, fill, stroke, parent):
 
 
 def camel_hub(cid, label, x, y, w, h):
-    """Single large Apache Camel container for all routes."""
-    return f'''        <mxCell id="{cid}" value="{esc(label)}" style="swimlane;startSize={CAMEL_HEADER};horizontal=0;fillColor=#FFF3E0;strokeColor=#E65100;strokeWidth=4;fontStyle=1;fontSize=13;fontColor=#BF360C;rounded=1;" vertex="1" parent="1">
+    """Single large Apache Camel container — title on TOP (horizontal=1), not left side."""
+    return f'''        <mxCell id="{cid}" value="{esc(label)}" style="swimlane;horizontal=1;startSize={CAMEL_HEADER};fillColor=#FFF3E0;strokeColor=#E65100;strokeWidth=4;fontStyle=1;fontSize=12;fontColor=#BF360C;rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
           <mxGeometry x="{x}" y="{y}" width="{w}" height="{h}" as="geometry"/>
         </mxCell>'''
 
@@ -256,11 +256,11 @@ def text_in_parent(cid, label, x, y, w, h, parent, size=10, color="#BF360C", bol
 
 
 def edge_labeled(eid, src, tgt, proto, color, width=2):
-    return f'''        <mxCell id="{eid}" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor={color};strokeWidth={width};endArrow=classic;endFill=1;" edge="1" parent="1" source="{src}" target="{tgt}">
+    return f'''        <mxCell id="{eid}" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor={color};strokeWidth={width};endArrow=classic;endFill=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="{src}" target="{tgt}">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="{eid}-lbl" value="{esc(proto)}" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=9;fontStyle=1;fontColor={color};labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="{eid}">
-          <mxGeometry x="-0.1" relative="1" as="geometry"><mxPoint y="-9" as="offset"/></mxGeometry>
+        <mxCell id="{eid}-lbl" value="{esc(proto)}" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=8;fontStyle=1;fontColor={color};labelBackgroundColor=#FFFFFF;labelBorderColor=none;" vertex="1" connectable="0" parent="{eid}">
+          <mxGeometry x="-0.05" y="-1" relative="1" as="geometry"><mxPoint y="-11" as="offset"/></mxGeometry>
         </mxCell>'''
 
 
@@ -273,8 +273,7 @@ cells.append(text("h-to", "TO", COL_TO_X, 88, W_TO, 16, 11, "#1565C0", True))
 
 # ONE big Apache Camel box — create before children
 CAMEL_ID = "camel-hub"
-cells.append(camel_hub(CAMEL_ID, "Apache Camel", COL_CAMEL_X, START_Y, W_CAMEL, HUB_H))
-cells.append(text_in_parent("camel-subtitle", "Centralized Integration Middleware", 8, CAMEL_HEADER + 2, W_CAMEL - 16, CAMEL_SUBTITLE_H, CAMEL_ID, 10, "#E65100", True))
+cells.append(camel_hub(CAMEL_ID, "Apache Camel&#xa;Centralized Integration Middleware", COL_CAMEL_X, START_Y, W_CAMEL, HUB_H))
 
 for i, f in enumerate(INTEGRATION_FLOWS):
     y = START_Y + ROW_START + i * (ROW_H + ROW_GAP)
@@ -302,7 +301,13 @@ for i, f in enumerate(INTEGRATION_FLOWS):
     cells.append(route_box(egr_id, egr_lbl, EGR_X, ry, W_EGR, route_h, "#E3F2FD", "#1565C0", CAMEL_ID))
 
     edge_cells.append(edge_labeled(f"{p}-e1", from_id, ing_id, f["ingress_proto"], "#2E7D32"))
-    edge_cells.append(edge_labeled(f"{p}-e2", ing_id, egr_id, f["ingress_proto"] + "→" + f["egress_proto"], "#E65100"))
+    # Internal route arrow — shorter label, routed inside box
+    edge_cells.append(f'''        <mxCell id="{p}-e2" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#E65100;strokeWidth=1;endArrow=classic;endFill=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="{ing_id}" target="{egr_id}">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="{p}-e2-lbl" value="{esc(f['ingress_proto'] + ' → ' + f['egress_proto'])}" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=7;fontStyle=0;fontColor=#E65100;labelBackgroundColor=#FFF8E1;" vertex="1" connectable="0" parent="{p}-e2">
+          <mxGeometry x="0" y="-1" relative="1" as="geometry"><mxPoint y="12" as="offset"/></mxGeometry>
+        </mxCell>''')
     edge_cells.append(edge_labeled(f"{p}-e3", egr_id, to_id, f["egress_proto"], "#1565C0"))
 
 # Footer
