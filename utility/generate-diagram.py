@@ -198,9 +198,8 @@ W_EGR = 188
 
 ROW_H = 68
 ROW_GAP = 16
-CAMEL_HEADER = 54
-CAMEL_SUBTITLE_H = 0
-ROW_START = CAMEL_HEADER + 14
+CAMEL_HEADER = 42
+ROW_START = CAMEL_HEADER + 16
 ING_X = 12
 EGR_X = 258
 ROUTE_FS = 8
@@ -235,8 +234,8 @@ def route_box(cid, label, x, y, w, h, fill, stroke, parent):
 
 
 def camel_hub(cid, label, x, y, w, h):
-    """Single large Apache Camel container — title on TOP (horizontal=1), not left side."""
-    return f'''        <mxCell id="{cid}" value="{esc(label)}" style="swimlane;horizontal=1;startSize={CAMEL_HEADER};fillColor=#FFF3E0;strokeColor=#E65100;strokeWidth=4;fontStyle=1;fontSize=12;fontColor=#BF360C;rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+    """Apache Camel box with title bar at the top."""
+    return f'''        <mxCell id="{cid}" value="{esc(label)}" style="swimlane;horizontal=1;startSize={CAMEL_HEADER};fillColor=#FFF3E0;strokeColor=#E65100;strokeWidth=4;fontStyle=1;fontSize=14;fontColor=#BF360C;rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="{x}" y="{y}" width="{w}" height="{h}" as="geometry"/>
         </mxCell>'''
 
@@ -273,7 +272,7 @@ cells.append(text("h-to", "TO", COL_TO_X, 88, W_TO, 16, 11, "#1565C0", True))
 
 # ONE big Apache Camel box — create before children
 CAMEL_ID = "camel-hub"
-cells.append(camel_hub(CAMEL_ID, "Apache Camel&#xa;Centralized Integration Middleware", COL_CAMEL_X, START_Y, W_CAMEL, HUB_H))
+cells.append(camel_hub(CAMEL_ID, "Apache Camel", COL_CAMEL_X, START_Y, W_CAMEL, HUB_H))
 
 for i, f in enumerate(INTEGRATION_FLOWS):
     y = START_Y + ROW_START + i * (ROW_H + ROW_GAP)
