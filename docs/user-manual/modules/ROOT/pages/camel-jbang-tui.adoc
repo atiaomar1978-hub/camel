@@ -193,8 +193,11 @@ Camel routes:
 * *Delete line* -- *Ctrl+K* to delete the current line
 * *Word navigation* -- *Ctrl+Left/Right* to jump by word
 * *Smart Home* -- *Home* key alternates between content indent and column 0
-* *Tab completion* -- press *Tab* for context-aware YAML completion (EIP names, component URIs,
-  option keys and values)
+* *Tab completion* -- press *Tab* for context-aware completion:
+** In `application.properties`: Camel configuration options (`camel.main.*`, `camel.component.*`, etc.)
+   and Spring Boot auto-configuration properties (`server.*`, `spring.*`, `management.*`, etc.)
+   resolved from starter JARs in the local Maven repository — works even for stopped projects
+** In YAML DSL routes: EIP names, component URIs, option keys and values
 
 The editor shows *gutter change markers* -- a green background on line numbers that have been
 modified or added since the file was opened. This gives an at-a-glance view of what you've changed.
@@ -804,6 +807,10 @@ When the AI panel is open, input that starts with `/` runs a local panel command
 Submitted prompts (including slash commands) participate in AI prompt history when
 `camel.tui.ai.promptHistory` is not `0`. Use *↑*/*↓* on the prompt line to recall them.
 
+Press *Ctrl+U* while the AI panel is open to toggle the AI Usage view. It shows token consumption from
+the embedded AI prompt (*TUI ask*) and from monitored route LLM calls exported as OpenTelemetry GenAI spans
+when observability is enabled on the integration.
+
 === Connecting an AI Agent
 
 To connect Claude Code to the TUI, add the MCP server to your project configuration
@@ -885,6 +892,23 @@ https://asciinema.org/[Asciinema] `.cast` recording:
 camel tui --record=demo.tape
 ----
 
+The `.cast` file is written next to the tape, with the `.tape` suffix replaced by `.cast`.
+Recording is headless: the TUI is driven entirely by the tape rather than by your terminal,
+so no keyboard input is read and nothing is drawn on screen.
+
+The recorded terminal is 200x50 by default, which is wider than a documentation page can
+display. Use `--record-size` to record at a size that fits, and `--record-fps` or
+`--record-duration` to control the capture rate and the cut-off:
+
+[source,bash]
+----
+camel tui --record=demo.tape --record-size=160x44 --record-fps=15
+----
+
+`--record` cannot be combined with `--web`. Recording drives a headless TUI from the tape, and
+the recording configuration applies to the whole process, so every browser session would be
+recorded into the same `.cast` file. Camel rejects the combination with an error instead.
+
 === Converting to GIF
 
 Convert recordings using https://github.com/asciinema/agg[agg] (for `.cast` files) or
@@ -933,4 +957,16 @@ vhs demo.tape               # .tape -> .gif
 | `--record`
 | Replay a `.tape` file and record the session to an Asciinema `.cast` file.
 |
+
+| `--record-size`
+| Size of the recorded terminal for `--record`, as `<cols>x<rows>`.
+| `200x50`
+
+| `--record-fps`
+| Frames per second captured by `--record`.
+| `10`
+
+| `--record-duration`
+| Maximum duration in milliseconds captured by `--record`.
+| `120000`
 |===

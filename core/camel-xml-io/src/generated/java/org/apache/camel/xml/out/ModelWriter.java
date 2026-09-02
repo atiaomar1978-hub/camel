@@ -65,6 +65,9 @@ public class ModelWriter extends BaseWriter {
     public void writeBeanFactoryDefinition(BeanFactoryDefinition def) throws IOException {
         doWriteBeanFactoryDefinition("beanFactory", def);
     }
+    public void writeCacheDefinition(CacheDefinition def) throws IOException {
+        doWriteCacheDefinition("cache", def);
+    }
     public void writeCatchDefinition(CatchDefinition def) throws IOException {
         doWriteCatchDefinition("doCatch", def);
     }
@@ -512,6 +515,12 @@ public class ModelWriter extends BaseWriter {
     public void writeThriftDataFormat(ThriftDataFormat def) throws IOException {
         doWriteThriftDataFormat("thrift", def);
     }
+    public void writeToonDataFormat(ToonDataFormat def) throws IOException {
+        doWriteToonDataFormat("toon", def);
+    }
+    public void writeUblDataFormat(UblDataFormat def) throws IOException {
+        doWriteUblDataFormat("ubl", def);
+    }
     public void writeUniVocityCsvDataFormat(UniVocityCsvDataFormat def) throws IOException {
         doWriteUniVocityCsvDataFormat("univocityCsv", def);
     }
@@ -553,9 +562,6 @@ public class ModelWriter extends BaseWriter {
     }
     public void writeSpringTransactionErrorHandlerDefinition(SpringTransactionErrorHandlerDefinition def) throws IOException {
         doWriteSpringTransactionErrorHandlerDefinition("springTransactionErrorHandler", def);
-    }
-    public void writeCSimpleExpression(CSimpleExpression def) throws IOException {
-        doWriteCSimpleExpression("csimple", def);
     }
     public void writeConstantExpression(ConstantExpression def) throws IOException {
         doWriteConstantExpression("constant", def);
@@ -608,8 +614,14 @@ public class ModelWriter extends BaseWriter {
     public void writeOgnlExpression(OgnlExpression def) throws IOException {
         doWriteOgnlExpression("ognl", def);
     }
+    public void writePython3Expression(Python3Expression def) throws IOException {
+        doWritePython3Expression("python3", def);
+    }
     public void writePythonExpression(PythonExpression def) throws IOException {
         doWritePythonExpression("python", def);
+    }
+    public void writeQuickjsExpression(QuickjsExpression def) throws IOException {
+        doWriteQuickjsExpression("quickjs", def);
     }
     public void writeRefExpression(RefExpression def) throws IOException {
         doWriteRefExpression("ref", def);
@@ -862,6 +874,15 @@ public class ModelWriter extends BaseWriter {
         doWriteElement("constructors", new BeanConstructorsAdapter().marshal(def.getConstructors()), this::doWriteBeanConstructorsDefinition);
         doWriteElement("properties", new BeanPropertiesAdapter().marshal(def.getProperties()), this::doWriteBeanPropertiesDefinition);
         doWriteElement("script", def.getScript(), this::doWriteString);
+        endElement(name);
+    }
+    protected void doWriteCacheDefinition(String name, CacheDefinition def) throws IOException {
+        startElement(name);
+        doWriteProcessorDefinitionAttributes(def);
+        doWriteAttribute("keyValueRepository", def.getKeyValueRepository(), null);
+        doWriteAttribute("ttl", def.getTtl(), "-1");
+        doWriteAttribute("cacheNull", def.getCacheNull(), "false");
+        doWriteOutputExpressionNodeElements(def);
         endElement(name);
     }
     protected void doWriteCatchDefinition(String name, CatchDefinition def) throws IOException {
@@ -1212,6 +1233,8 @@ public class ModelWriter extends BaseWriter {
                 case "SwiftMxDataFormat" -> doWriteSwiftMxDataFormat("swiftMx", (SwiftMxDataFormat) v);
                 case "SyslogDataFormat" -> doWriteSyslogDataFormat("syslog", (SyslogDataFormat) v);
                 case "TarFileDataFormat" -> doWriteTarFileDataFormat("tarFile", (TarFileDataFormat) v);
+                case "ToonDataFormat" -> doWriteToonDataFormat("toon", (ToonDataFormat) v);
+                case "UblDataFormat" -> doWriteUblDataFormat("ubl", (UblDataFormat) v);
                 case "ThriftDataFormat" -> doWriteThriftDataFormat("thrift", (ThriftDataFormat) v);
                 case "UniVocityCsvDataFormat" -> doWriteUniVocityCsvDataFormat("univocityCsv", (UniVocityCsvDataFormat) v);
                 case "UniVocityFixedDataFormat" -> doWriteUniVocityFixedDataFormat("univocityFixed", (UniVocityFixedDataFormat) v);
@@ -1989,6 +2012,8 @@ public class ModelWriter extends BaseWriter {
                 case "SwiftMxDataFormat" -> doWriteSwiftMxDataFormat("swiftMx", (SwiftMxDataFormat) v);
                 case "SyslogDataFormat" -> doWriteSyslogDataFormat("syslog", (SyslogDataFormat) v);
                 case "TarFileDataFormat" -> doWriteTarFileDataFormat("tarFile", (TarFileDataFormat) v);
+                case "ToonDataFormat" -> doWriteToonDataFormat("toon", (ToonDataFormat) v);
+                case "UblDataFormat" -> doWriteUblDataFormat("ubl", (UblDataFormat) v);
                 case "ThriftDataFormat" -> doWriteThriftDataFormat("thrift", (ThriftDataFormat) v);
                 case "UniVocityCsvDataFormat" -> doWriteUniVocityCsvDataFormat("univocityCsv", (UniVocityCsvDataFormat) v);
                 case "UniVocityFixedDataFormat" -> doWriteUniVocityFixedDataFormat("univocityFixed", (UniVocityFixedDataFormat) v);
@@ -2318,6 +2343,8 @@ public class ModelWriter extends BaseWriter {
                 case "SwiftMxDataFormat" -> doWriteSwiftMxDataFormat("swiftMx", (SwiftMxDataFormat) v);
                 case "SyslogDataFormat" -> doWriteSyslogDataFormat("syslog", (SyslogDataFormat) v);
                 case "TarFileDataFormat" -> doWriteTarFileDataFormat("tarFile", (TarFileDataFormat) v);
+                case "ToonDataFormat" -> doWriteToonDataFormat("toon", (ToonDataFormat) v);
+                case "UblDataFormat" -> doWriteUblDataFormat("ubl", (UblDataFormat) v);
                 case "ThriftDataFormat" -> doWriteThriftDataFormat("thrift", (ThriftDataFormat) v);
                 case "UniVocityCsvDataFormat" -> doWriteUniVocityCsvDataFormat("univocityCsv", (UniVocityCsvDataFormat) v);
                 case "UniVocityFixedDataFormat" -> doWriteUniVocityFixedDataFormat("univocityFixed", (UniVocityFixedDataFormat) v);
@@ -2572,6 +2599,7 @@ public class ModelWriter extends BaseWriter {
         doWriteAttribute("compressionAlgorithm", def.getCompressionAlgorithm(), null);
         doWriteAttribute("hashAlgorithm", def.getHashAlgorithm(), null);
         doWriteAttribute("signatureVerificationOption", def.getSignatureVerificationOption(), null);
+        doWriteAttribute("requireIntegrityProtection", def.getRequireIntegrityProtection(), "true");
         endElement(name);
     }
     protected void doWritePQCDataFormat(String name, PQCDataFormat def) throws IOException {
@@ -2677,6 +2705,22 @@ public class ModelWriter extends BaseWriter {
         doWriteAttribute("instanceClass", def.getInstanceClass(), null);
         doWriteAttribute("contentTypeFormat", def.getContentTypeFormat(), "binary");
         doWriteAttribute("contentTypeHeader", def.getContentTypeHeader(), "true");
+        endElement(name);
+    }
+    protected void doWriteToonDataFormat(String name, ToonDataFormat def) throws IOException {
+        startElement(name);
+        doWriteIdentifiedTypeAttributes(def);
+        doWriteAttribute("indent", def.getIndent(), "2");
+        doWriteAttribute("delimiter", def.getDelimiter(), "COMMA");
+        doWriteAttribute("lengthMarker", def.getLengthMarker(), "false");
+        doWriteAttribute("strict", def.getStrict(), "true");
+        doWriteAttribute("contentTypeHeader", def.getContentTypeHeader(), "true");
+        endElement(name);
+    }
+    protected void doWriteUblDataFormat(String name, UblDataFormat def) throws IOException {
+        startElement(name);
+        doWriteIdentifiedTypeAttributes(def);
+        doWriteAttribute("prettyPrint", def.getPrettyPrint(), "false");
         endElement(name);
     }
     protected void doWriteUniVocityAbstractDataFormatAttributes(UniVocityAbstractDataFormat def) throws IOException {
@@ -2851,14 +2895,6 @@ public class ModelWriter extends BaseWriter {
         doWriteDefaultErrorHandlerDefinitionElements(def);
         endElement(name);
     }
-    protected void doWriteCSimpleExpression(String name, CSimpleExpression def) throws IOException {
-        startElement(name);
-        doWriteTypedExpressionDefinitionAttributes(def);
-        doWriteAttribute("trimResult", def.getTrimResult(), "false");
-        doWriteAttribute("pretty", def.getPretty(), "false");
-        doWriteValue(def.getExpression());
-        endElement(name);
-    }
     protected void doWriteConstantExpression(String name, ConstantExpression def) throws IOException {
         startElement(name);
         doWriteTypedExpressionDefinitionAttributes(def);
@@ -2977,12 +3013,16 @@ public class ModelWriter extends BaseWriter {
         doWriteValue(def.getExpression());
         endElement(name);
     }
+    protected void doWriteNamespaceAwareExpressionAttributes(NamespaceAwareExpression def) throws IOException {
+        doWriteSingleInputTypedExpressionDefinitionAttributes(def);
+        doWriteAttribute("namespacesRef", def.getNamespacesRef(), null);
+    }
     protected void doWriteNamespaceAwareExpressionElements(NamespaceAwareExpression def) throws IOException {
         doWriteList(null, "namespace", def.getNamespace(), this::doWritePropertyDefinition);
     }
     protected void doWriteNamespaceAwareExpression(String name, NamespaceAwareExpression def) throws IOException {
         startElement(name);
-        doWriteSingleInputTypedExpressionDefinitionAttributes(def);
+        doWriteNamespaceAwareExpressionAttributes(def);
         doWriteValue(def.getExpression());
         doWriteNamespaceAwareExpressionElements(def);
         endElement(name);
@@ -2993,7 +3033,19 @@ public class ModelWriter extends BaseWriter {
         doWriteValue(def.getExpression());
         endElement(name);
     }
+    protected void doWritePython3Expression(String name, Python3Expression def) throws IOException {
+        startElement(name);
+        doWriteTypedExpressionDefinitionAttributes(def);
+        doWriteValue(def.getExpression());
+        endElement(name);
+    }
     protected void doWritePythonExpression(String name, PythonExpression def) throws IOException {
+        startElement(name);
+        doWriteTypedExpressionDefinitionAttributes(def);
+        doWriteValue(def.getExpression());
+        endElement(name);
+    }
+    protected void doWriteQuickjsExpression(String name, QuickjsExpression def) throws IOException {
         startElement(name);
         doWriteTypedExpressionDefinitionAttributes(def);
         doWriteValue(def.getExpression());
@@ -3070,7 +3122,7 @@ public class ModelWriter extends BaseWriter {
     }
     protected void doWriteXMLTokenizerExpression(String name, XMLTokenizerExpression def) throws IOException {
         startElement(name);
-        doWriteSingleInputTypedExpressionDefinitionAttributes(def);
+        doWriteNamespaceAwareExpressionAttributes(def);
         doWriteAttribute("mode", def.getMode(), "i");
         doWriteAttribute("group", def.getGroup(), null);
         doWriteValue(def.getExpression());
@@ -3079,7 +3131,7 @@ public class ModelWriter extends BaseWriter {
     }
     protected void doWriteXPathExpression(String name, XPathExpression def) throws IOException {
         startElement(name);
-        doWriteSingleInputTypedExpressionDefinitionAttributes(def);
+        doWriteNamespaceAwareExpressionAttributes(def);
         doWriteAttribute("documentType", def.getDocumentTypeName(), null);
         doWriteAttribute("resultQName", def.getResultQName(), "NODESET");
         doWriteAttribute("saxon", def.getSaxon(), null);
@@ -3094,7 +3146,7 @@ public class ModelWriter extends BaseWriter {
     }
     protected void doWriteXQueryExpression(String name, XQueryExpression def) throws IOException {
         startElement(name);
-        doWriteSingleInputTypedExpressionDefinitionAttributes(def);
+        doWriteNamespaceAwareExpressionAttributes(def);
         doWriteAttribute("configurationRef", def.getConfigurationRef(), null);
         doWriteValue(def.getExpression());
         doWriteNamespaceAwareExpressionElements(def);
@@ -3503,6 +3555,8 @@ public class ModelWriter extends BaseWriter {
                 case "SwiftMxDataFormat" -> doWriteSwiftMxDataFormat("swiftMx", (SwiftMxDataFormat) v);
                 case "SyslogDataFormat" -> doWriteSyslogDataFormat("syslog", (SyslogDataFormat) v);
                 case "TarFileDataFormat" -> doWriteTarFileDataFormat("tarFile", (TarFileDataFormat) v);
+                case "ToonDataFormat" -> doWriteToonDataFormat("toon", (ToonDataFormat) v);
+                case "UblDataFormat" -> doWriteUblDataFormat("ubl", (UblDataFormat) v);
                 case "ThriftDataFormat" -> doWriteThriftDataFormat("thrift", (ThriftDataFormat) v);
                 case "UniVocityCsvDataFormat" -> doWriteUniVocityCsvDataFormat("univocityCsv", (UniVocityCsvDataFormat) v);
                 case "UniVocityFixedDataFormat" -> doWriteUniVocityFixedDataFormat("univocityFixed", (UniVocityFixedDataFormat) v);
@@ -3612,6 +3666,7 @@ public class ModelWriter extends BaseWriter {
                 case "A2ASubTaskDefinition" -> doWriteA2ASubTaskDefinition("a2aSubTask", (A2ASubTaskDefinition) v);
                 case "AggregateDefinition" -> doWriteAggregateDefinition("aggregate", (AggregateDefinition) v);
                 case "BeanDefinition" -> doWriteBeanDefinition("bean", (BeanDefinition) v);
+                case "CacheDefinition" -> doWriteCacheDefinition("cache", (CacheDefinition) v);
                 case "CatchDefinition" -> doWriteCatchDefinition("doCatch", (CatchDefinition) v);
                 case "ChoiceDefinition" -> doWriteChoiceDefinition("choice", (ChoiceDefinition) v);
                 case "CircuitBreakerDefinition" -> doWriteCircuitBreakerDefinition("circuitBreaker", (CircuitBreakerDefinition) v);
@@ -3720,6 +3775,7 @@ public class ModelWriter extends BaseWriter {
                 case "A2ASubTaskDefinition" -> doWriteA2ASubTaskDefinition("a2aSubTask", (A2ASubTaskDefinition) v);
                 case "AggregateDefinition" -> doWriteAggregateDefinition("aggregate", (AggregateDefinition) v);
                 case "BeanDefinition" -> doWriteBeanDefinition("bean", (BeanDefinition) v);
+                case "CacheDefinition" -> doWriteCacheDefinition("cache", (CacheDefinition) v);
                 case "CatchDefinition" -> doWriteCatchDefinition("doCatch", (CatchDefinition) v);
                 case "ChoiceDefinition" -> doWriteChoiceDefinition("choice", (ChoiceDefinition) v);
                 case "CircuitBreakerDefinition" -> doWriteCircuitBreakerDefinition("circuitBreaker", (CircuitBreakerDefinition) v);
@@ -3850,7 +3906,6 @@ public class ModelWriter extends BaseWriter {
     protected void doWriteExpressionDefinitionRef(String n, ExpressionDefinition v) throws IOException {
         if (v != null) {
             switch (v.getClass().getSimpleName()) {
-                case "CSimpleExpression" -> doWriteCSimpleExpression("csimple", (CSimpleExpression) v);
                 case "ConstantExpression" -> doWriteConstantExpression("constant", (ConstantExpression) v);
                 case "DatasonnetExpression" -> doWriteDatasonnetExpression("datasonnet", (DatasonnetExpression) v);
                 case "ExchangePropertyExpression" -> doWriteExchangePropertyExpression("exchangeProperty", (ExchangePropertyExpression) v);
@@ -3868,7 +3923,9 @@ public class ModelWriter extends BaseWriter {
                 case "MethodCallExpression" -> doWriteMethodCallExpression("method", (MethodCallExpression) v);
                 case "MvelExpression" -> doWriteMvelExpression("mvel", (MvelExpression) v);
                 case "OgnlExpression" -> doWriteOgnlExpression("ognl", (OgnlExpression) v);
+                case "Python3Expression" -> doWritePython3Expression("python3", (Python3Expression) v);
                 case "PythonExpression" -> doWritePythonExpression("python", (PythonExpression) v);
+                case "QuickjsExpression" -> doWriteQuickjsExpression("quickjs", (QuickjsExpression) v);
                 case "RefExpression" -> doWriteRefExpression("ref", (RefExpression) v);
                 case "SimpleExpression" -> doWriteSimpleExpression("simple", (SimpleExpression) v);
                 case "SpELExpression" -> doWriteSpELExpression("spel", (SpELExpression) v);
