@@ -11,6 +11,93 @@ Note that manual migration is still required.
 See the xref:camel-upgrade-recipes-tool.adoc[documentation] page for details.
 ====
 
+== Upgrading from 4.18.4 to 4.18.5
+
+=== camel-dynamic-router
+
+The `dynamic-router-control` endpoint no longer takes the subscription `predicate`, or the
+`expressionLanguage` used to compile it, from the incoming control message. A control message that
+supplies either is now rejected with an `IllegalArgumentException`.
+
+The predicate is compiled and then evaluated against every exchange on the channel, so letting the
+control message choose both the language and the expression means the sender of that message decides
+what runs inside the Camel process. Only enable this when control messages can only come from a
+trusted source:
+
+[source,java]
+----
+from("kafka:subscriptions")
+    .unmarshal().json(DynamicRouterControlMessage.class)
+    .to("dynamic-router-control:subscribe?allowPredicateFromMessage=true");
+----
+
+Two alternatives avoid the flag entirely. A control message may still name a `predicateBean`, which
+selects a `Predicate` that the route author bound in the registry; that path is unchanged. The
+control endpoint may also carry `predicate` and `expressionLanguage` as URI parameters, in which case
+every subscription made through that endpoint uses the route author's expression. Subscription
+parameters that the control message does not carry now fall back to the values configured on the
+endpoint.
+
+Note that this release line does not carry the `allowedSchemes` option added to the `dynamic-router`
+endpoint on newer lines, nor the `security = "insecure:dev"` marker on `allowPredicateFromMessage`,
+because neither the option allow-list nor the security policy framework exists in 4.18.
+
+=== camel-ftp, camel-sftp, camel-ftps, camel-mina-sftp, camel-azure-files, camel-smb
+
+The remote-file consumers now ensure the path resolved for a polled file stays within the directory being
+polled. The file name that path is built from is reported by the remote server in its directory listing and is
+not guaranteed to be a single path segment, so a listing entry containing `../` sequences could previously
+resolve to a path outside the configured directory and be used as the operand for retrieving, deleting or
+renaming a file.
+
+The containment check honours the existing `jailStartingDirectory` option (default `true`), consistent with the
+file producer and with the `localWorkDirectory` download path; set `jailStartingDirectory=false` to disable it.
+A file that resolves outside the configured directory is now skipped, and a warning is logged.
+
+Ordinary listings are unaffected, as a listed name is normally a single path segment, and a `../` that still
+resolves back inside the polled directory remains accepted. Two configurations can newly see files skipped: a
+server that reports names navigating above the polled directory, and a `fileName` expression (used when
+`useList=false`) that navigates above it. Set `jailStartingDirectory=false` if such a path is intended.
+
+=== camel-spring-redis - the default serializer applies a deserialization filter
+
+The default serializer, `JdkSerializationRedisSerializer`, now installs a
+`java.io.ObjectInputFilter` while reading Redis payloads. Previously no filter was applied at all.
+This affects both the consumer, which deserializes the payload of every message published to the
+subscribed channels, and the producer read commands, which deserialize the values stored in Redis.
+
+When no explicit pattern is configured, the JVM-wide `jdk.serialFilter` is honoured if set,
+otherwise a conservative default allow-list is applied (it permits standard Java and Apache Camel
+types and denies `java.net.**`). Routes that exchange classes outside that allow-list must widen it
+through the new `deserializationFilter` endpoint option, for example:
+
+[source,java]
+----
+from("spring-redis://localhost:6379?command=SUBSCRIBE&channels=myChannel"
+     + "&deserializationFilter=com.example.model.**;java.**;!*")
+----
+
+Setting the `serializer` option to a custom `RedisSerializer` bypasses the filter entirely, since
+Camel then no longer controls how the payload is read.
+
+=== camel-google-mail - the raw option now returns the message
+
+The `google-mail-stream` consumer always asked the Gmail API for the `FULL` message format, but the
+`raw` field is only populated for the `RAW` format, so `raw=true` produced a `null` body. The consumer
+now requests the format that matches the option.
+
+Because the Gmail API does not return the parsed `payload` for the `RAW` format, a route running with
+`raw=true` no longer receives the `CamelGoogleMailStreamSubject`, `...From`, `...To`, `...Cc`, `...Bcc`
+and `...MessageId` headers — those values are part of the RFC 2822 content that is now in the body.
+`CamelGoogleMailStreamId`, `...ThreadId` and `...LabelIds` are still set. Routes that need the parsed
+headers should keep the default `raw=false`.
+
+=== camel-google-vertexai - the jsonMode option is now applied
+
+The option was declared and documented but never read, so it had no effect. `jsonMode=true` now sets
+the response MIME type of the request to `application/json`, so the model is asked to answer with
+JSON. The default `false` leaves the request untouched.
+
 == Upgrading from 4.18.3 to 4.18.4
 
 === camel-core - Multicast EIP honors UseOriginalAggregationStrategy
