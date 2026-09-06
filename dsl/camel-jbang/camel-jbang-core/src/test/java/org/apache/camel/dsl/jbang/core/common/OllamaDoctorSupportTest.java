@@ -40,12 +40,12 @@ class OllamaDoctorSupportTest {
     }
 
     @Test
-    void detectReturnsNotRunningWhenOllamaUnreachable() {
-        OllamaDoctorSupport.Status status = OllamaDoctorSupport.detect();
+    void detectUsesLlmClientProbeLogic() throws IOException {
+        String baseUrl = startOllamaServer("{\"models\":[{\"name\":\"qwen2.5:32b\"}]}");
+        LlmClient client = LlmClient.create().withApiType(LlmClient.ApiType.ollama).withUrl(baseUrl);
 
-        assertThat(status.running()).isFalse();
-        assertThat(status.baseUrl()).isNull();
-        assertThat(status.models()).isEmpty();
+        assertThat(client.detectEndpoint()).isTrue();
+        assertThat(client.listModels()).containsExactly("qwen2.5:32b");
     }
 
     @Test

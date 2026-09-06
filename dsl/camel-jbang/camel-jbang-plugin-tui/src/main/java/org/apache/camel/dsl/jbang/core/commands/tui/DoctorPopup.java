@@ -71,10 +71,11 @@ class DoctorPopup {
         checkJBang(lines);
         checkMavenRepository(lines);
         checkContainerRuntime(lines);
-        checkOllama(lines);
+        OllamaDoctorSupport.Status ollamaStatus = OllamaDoctorSupport.detect();
+        checkOllama(lines, ollamaStatus);
         checkCommonPorts(lines);
         checkDiskSpace(lines);
-        checkAiProvider(lines);
+        checkAiProvider(lines, ollamaStatus);
         checkMcpConnection(lines);
         visible = true;
     }
@@ -284,8 +285,8 @@ class DoctorPopup {
         return v != null && !v.isBlank();
     }
 
-    private void checkAiProvider(List<Line> result) {
-        addAiProviderLines(result, resolveCloudAiProvider(), OllamaDoctorSupport.detect());
+    private void checkAiProvider(List<Line> result, OllamaDoctorSupport.Status ollamaStatus) {
+        addAiProviderLines(result, resolveCloudAiProvider(), ollamaStatus);
     }
 
     static void addAiProviderLines(List<Line> result, String cloudProvider, OllamaDoctorSupport.Status ollama) {
@@ -337,8 +338,8 @@ class DoctorPopup {
         return null;
     }
 
-    private void checkOllama(List<Line> result) {
-        addOllamaLines(result, OllamaDoctorSupport.detect());
+    private void checkOllama(List<Line> result, OllamaDoctorSupport.Status status) {
+        addOllamaLines(result, status);
     }
 
     static void addOllamaLines(List<Line> result, OllamaDoctorSupport.Status status) {
