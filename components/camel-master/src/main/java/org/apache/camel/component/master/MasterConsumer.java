@@ -70,6 +70,7 @@ public class MasterConsumer extends DefaultConsumer implements ResumeAware<Resum
     // makes every leadership event and start attempt wait for whatever lifecycle operation is in progress
     private final Lock leadershipLock = new ReentrantLock();
     private boolean leadershipTaken;
+    // accessed only under leadershipLock (not volatile; delegatedConsumer/view are volatile for other paths)
     private BackgroundTask leaderTask;
     private Future<?> leaderTaskFuture;
 
@@ -128,7 +129,8 @@ public class MasterConsumer extends DefaultConsumer implements ResumeAware<Resum
 
         // note: removeEventListener below needs the write lock of the cluster view, while an event dispatch
         // takes the read lock of the view and then leadershipLock. This thread must not hold leadershipLock
-        // here, or the two orders deadlock
+        // here, or the two orders deadlock. super.doStop() has already run above, so isRunAllowed() is the
+        // first gate any leadership event hits once stopping begins
 
         if (view != null) {
             view.removeEventListener(leadershipListener);

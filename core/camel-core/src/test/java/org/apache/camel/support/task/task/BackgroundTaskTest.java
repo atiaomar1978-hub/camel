@@ -308,6 +308,45 @@ public class BackgroundTaskTest extends TaskTestSupport {
         }
     }
 
+    @DisplayName("Test that cancel(false) during an in-flight attempt clears isRunning before the supplier returns")
+    @Test
+    @Timeout(20)
+    void testCancelDuringInFlightAttempt() throws Exception {
+        ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+        try {
+            java.util.concurrent.CountDownLatch attemptStarted = new java.util.concurrent.CountDownLatch(1);
+            java.util.concurrent.CountDownLatch releaseAttempt = new java.util.concurrent.CountDownLatch(1);
+
+            BackgroundTask task = Tasks.backgroundTask()
+                    .withScheduledExecutor(executor)
+                    .withBudget(Budgets.iterationTimeBudget()
+                            .withInterval(Duration.ofMillis(100))
+                            .withInitialDelay(Duration.ZERO)
+                            .withUnlimitedDuration()
+                            .build())
+                    .withName("cancel-during-attempt")
+                    .build();
+
+            Future<?> future = task.schedule(camelContext, () -> {
+                attemptStarted.countDown();
+                try {
+                    return releaseAttempt.await(10, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return true;
+                }
+            });
+
+            assertTrue(attemptStarted.await(10, TimeUnit.SECONDS), "The supplier should have started");
+            task.cancel(false);
+
+            assertTrue(future.isCancelled(), "A cancelled task should not stay scheduled");
+            assertFalse(task.isRunning(), "cancel(false) clears isRunning before the in-flight supplier returns");
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
     @DisplayName("Test that cancelling a task before its first run leaves nothing behind")
     @Test
     @Timeout(20)

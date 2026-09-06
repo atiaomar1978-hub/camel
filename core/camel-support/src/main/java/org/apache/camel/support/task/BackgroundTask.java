@@ -171,6 +171,7 @@ public class BackgroundTask extends AbstractTask implements BlockingTask {
         running.set(true);
         Future<?> future = service.scheduleWithFixedDelay(() -> runTaskWrapper(camelContext, supplier),
                 budget.initialDelay(), budget.interval(), TimeUnit.MILLISECONDS);
+        // publish context before future so cancel() can deregister even if it lands between the two assignments
         scheduledContext.set(camelContext);
         scheduledFuture.set(future);
         if (latch.getCount() == 0) {
@@ -185,6 +186,12 @@ public class BackgroundTask extends AbstractTask implements BlockingTask {
      * removes it from the {@link TaskManagerRegistry}. A scheduled task deregisters itself from one of its runs, which
      * is not going to happen once the schedule is cancelled, so cancelling the returned {@link Future} directly leaves
      * the task behind in the registry.
+     *
+     * <p>
+     * When {@code mayInterruptIfRunning} is {@code false}, an attempt that is already executing its supplier is not
+     * interrupted. {@link #isRunning()} is cleared before this method returns, so it may report {@code false} while a
+     * supplier call is still in progress. Callers that must wait for the in-flight attempt to finish should pass
+     * {@code true} or await the future returned by {@link #schedule(CamelContext, BooleanSupplier)}.
      *
      * @param mayInterruptIfRunning whether the thread of an attempt that is currently running should be interrupted
      */
