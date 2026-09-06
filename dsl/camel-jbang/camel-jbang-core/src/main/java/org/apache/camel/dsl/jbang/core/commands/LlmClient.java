@@ -187,6 +187,13 @@ public class LlmClient {
         return apiType;
     }
 
+    /**
+     * Resolved LLM endpoint URL after {@link #detectEndpoint()}, or the configured URL when set explicitly.
+     */
+    public String endpointUrl() {
+        return url;
+    }
+
     // -- Builder --
 
     public static LlmClient create() {

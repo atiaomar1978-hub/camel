@@ -39,6 +39,7 @@ import dev.tamboui.widgets.block.Borders;
 import dev.tamboui.widgets.paragraph.Paragraph;
 import org.apache.camel.catalog.CamelCatalog;
 import org.apache.camel.catalog.DefaultCamelCatalog;
+import org.apache.camel.dsl.jbang.core.common.OllamaDoctorSupport;
 import org.apache.camel.dsl.jbang.core.common.VersionHelper;
 import org.apache.camel.tooling.maven.MavenDownloaderImpl;
 import org.apache.camel.tooling.maven.MavenResolutionException;
@@ -70,6 +71,7 @@ class DoctorPopup {
         checkJBang(lines);
         checkMavenRepository(lines);
         checkContainerRuntime(lines);
+        checkOllama(lines);
         checkCommonPorts(lines);
         checkDiskSpace(lines);
         checkAiProvider(lines);
@@ -283,21 +285,13 @@ class DoctorPopup {
     }
 
     private void checkAiProvider(List<Line> result) {
-        String provider = null;
-        if (envSet("ANTHROPIC_API_KEY")) {
-            provider = "Anthropic";
-        } else if (envSet("CLOUD_ML_REGION") && envSet("ANTHROPIC_VERTEX_PROJECT_ID")) {
-            provider = "Vertex AI";
-        } else if (envSet("AZURE_OPENAI_API_KEY") && envSet("AZURE_OPENAI_ENDPOINT")) {
-            provider = "Azure OpenAI";
-        } else if (envSet("GEMINI_API_KEY")) {
-            provider = "Gemini";
-        } else if (envSet("OPENAI_API_KEY")) {
-            provider = "OpenAI";
-        } else if (envSet("WATSONX_APIKEY")) {
-            provider = "watsonx.ai";
-        } else if (envSet("LLM_API_KEY")) {
-            provider = "Custom (LLM_API_KEY)";
+        addAiProviderLines(result, resolveCloudAiProvider(), OllamaDoctorSupport.detect());
+    }
+
+    static void addAiProviderLines(List<Line> result, String cloudProvider, OllamaDoctorSupport.Status ollama) {
+        String provider = cloudProvider;
+        if (provider == null && ollama.running()) {
+            provider = "Ollama (local)";
         }
         if (provider != null) {
             result.add(Line.from(
@@ -312,7 +306,61 @@ class DoctorPopup {
                     Span.raw(String.format("%-30s", "No API key configured")),
                     Span.raw(" " + TuiIcons.WARN)));
             result.add(Line.from(Span.styled(
-                    "                    Set ANTHROPIC_API_KEY, AZURE_OPENAI_*, GEMINI_API_KEY, OPENAI_API_KEY, or WATSONX_APIKEY",
+                    "                    Set ANTHROPIC_API_KEY, AZURE_OPENAI_*, GEMINI_API_KEY, OPENAI_API_KEY,"
+                                             + " WATSONX_APIKEY, or start Ollama",
+                    Style.EMPTY.dim())));
+        }
+    }
+
+    static String resolveCloudAiProvider() {
+        if (envSet("ANTHROPIC_API_KEY")) {
+            return "Anthropic";
+        }
+        if (envSet("CLOUD_ML_REGION") && envSet("ANTHROPIC_VERTEX_PROJECT_ID")) {
+            return "Vertex AI";
+        }
+        if (envSet("AZURE_OPENAI_API_KEY") && envSet("AZURE_OPENAI_ENDPOINT")) {
+            return "Azure OpenAI";
+        }
+        if (envSet("GEMINI_API_KEY")) {
+            return "Gemini";
+        }
+        if (envSet("OPENAI_API_KEY")) {
+            return "OpenAI";
+        }
+        if (envSet("WATSONX_APIKEY")) {
+            return "watsonx.ai";
+        }
+        if (envSet("LLM_API_KEY")) {
+            return "Custom (LLM_API_KEY)";
+        }
+        return null;
+    }
+
+    private void checkOllama(List<Line> result) {
+        addOllamaLines(result, OllamaDoctorSupport.detect());
+    }
+
+    static void addOllamaLines(List<Line> result, OllamaDoctorSupport.Status status) {
+        if (status.running()) {
+            result.add(Line.from(
+                    Span.raw(TuiIcons.indent(TuiIcons.MCP)),
+                    Span.styled(String.format("%-14s", "Ollama"), Theme.muted()),
+                    Span.raw(String.format("%-30s", OllamaDoctorSupport.tuiRunningSummary(status, 30))),
+                    Span.raw(" " + TuiIcons.OK)));
+            String models = OllamaDoctorSupport.formatModels(status.models());
+            if (models.length() > 52) {
+                models = models.substring(0, 49) + "...";
+            }
+            result.add(Line.from(Span.styled("                    models: " + models, Style.EMPTY.dim())));
+        } else {
+            result.add(Line.from(
+                    Span.raw(TuiIcons.indent(TuiIcons.MCP)),
+                    Span.styled(String.format("%-14s", "Ollama"), Theme.muted()),
+                    Span.raw(String.format("%-30s", "Not detected (optional)")),
+                    Span.raw(" " + TuiIcons.WARN)));
+            result.add(Line.from(Span.styled(
+                    "                    brew install ollama && ollama serve for local AI (F8)",
                     Style.EMPTY.dim())));
         }
     }
