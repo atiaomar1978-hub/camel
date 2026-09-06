@@ -100,6 +100,16 @@ assert_contains "$report_content" "\`Camel :: Kafka :: camel-kafka\` (2m 0s)" "s
 
 rm -f "$fixture" "$report_file"
 
+empty_fixture="$(mktemp)"
+touch "$empty_fixture"
+empty_tsv="$(parse_reactor_log_to_tsv "$empty_fixture")"
+assert_eq "" "$empty_tsv" "empty log yields empty tsv without error"
+
+empty_report="$(mktemp)"
+append_reactor_timing_report "$empty_fixture" "$empty_report" "All tested modules" ""
+assert_eq "" "$(cat "$empty_report")" "empty log yields empty report"
+rm -f "$empty_fixture" "$empty_report"
+
 echo ""
 echo "reactor_timing_test.sh: ${pass} passed, ${fail} failed"
 if [[ "$fail" -ne 0 ]]; then

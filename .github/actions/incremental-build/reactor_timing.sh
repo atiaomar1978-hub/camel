@@ -76,17 +76,28 @@ format_elapsed_seconds() {
 
 parse_reactor_log_to_tsv() {
   local log_file="$1"
-  grep '^\[INFO\] Camel ::' "$log_file" | while IFS= read -r line; do
-    local module duration status
+  local parsed=""
+  local line module duration status
+
+  while IFS= read -r line; do
     module=$(parse_reactor_module_name "$line")
     duration=$(parse_reactor_duration_seconds "$line")
     status=$(parse_reactor_status "$line")
     if [[ -n "$module" ]]; then
-      printf '%s\t%s\t%s\n' "$module" "${duration:-}" "${status:-}"
+      parsed+="${module}"$'\t'"${duration}"$'\t'"${status}"$'\n'
     fi
-  done | awk -F '\t' '
+  done < <(grep '^\[INFO\] Camel ::' "$log_file" || true)
+
+  if [[ -z "$parsed" ]]; then
+    return 0
+  fi
+
+  echo "$parsed" | awk -F '\t' '
     {
       key = $1
+      if (key == "") {
+        next
+      }
       duration = ($2 == "" ? -1 : $2)
       status = $3
       if (!(key in seen) || duration > stored[key]) {
