@@ -6,7 +6,6 @@
     "title": "Camel CLI",
     "description": "Information about Camel CLI",
     "deprecated": false,
-    "readOnly": true,
     "javaType": "org.apache.camel.jbang.console.JBangDevConsole",
     "groupId": "org.apache.camel",
     "artifactId": "camel-jbang-console",

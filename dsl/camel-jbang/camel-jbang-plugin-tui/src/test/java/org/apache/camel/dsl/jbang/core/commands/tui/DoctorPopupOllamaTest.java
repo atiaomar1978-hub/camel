@@ -73,6 +73,30 @@ class DoctorPopupOllamaTest {
     }
 
     @Test
+    void aiProviderWarnsWhenOllamaRunningWithoutModels() {
+        List<Line> lines = new ArrayList<>();
+        OllamaDoctorSupport.Status ollama = new OllamaDoctorSupport.Status(true, "http://localhost:11434", List.of());
+
+        DoctorPopup.addAiProviderLines(lines, null, ollama);
+
+        assertThat(lineTexts(lines)).anyMatch(text -> text.contains("Ollama (no models)"));
+        assertThat(lineTexts(lines)).anyMatch(text -> text.contains("ollama pull"));
+    }
+
+    @Test
+    void ollamaRowTruncatesLongModelList() {
+        List<Line> lines = new ArrayList<>();
+        OllamaDoctorSupport.Status status = new OllamaDoctorSupport.Status(
+                true,
+                "http://localhost:11434",
+                List.of("model-one-with-a-long-name", "model-two-with-a-long-name", "model-three"));
+
+        DoctorPopup.addOllamaLines(lines, status);
+
+        assertThat(lineTexts(lines)).anyMatch(text -> text.contains("models:") && text.contains("..."));
+    }
+
+    @Test
     void ollamaRowWarnsWhenNotRunning() {
         List<Line> lines = new ArrayList<>();
 

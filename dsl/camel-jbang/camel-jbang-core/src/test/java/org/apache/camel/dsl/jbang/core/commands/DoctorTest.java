@@ -105,11 +105,11 @@ class DoctorTest extends CamelCommandBaseTestSupport {
     @Test
     void shouldReportOllamaNotDetectedWhenUnavailable() throws Exception {
         Doctor command = new Doctor(new CamelJBangMain().withPrinter(printer));
-        command.doCall();
+        command.printOllamaStatus(OllamaDoctorSupport.Status.notRunning());
 
-        String output = printer.getOutput();
-        assertThat(output).contains("Ollama:");
-        assertThat(output).containsAnyOf("Not detected", "Running at");
+        assertThat(printer.getOutput())
+                .contains("Ollama:")
+                .contains("Not detected");
     }
 
     @Test

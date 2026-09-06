@@ -42,7 +42,11 @@ public final class OllamaDoctorSupport {
      * Probes {@code camel infra run ollama} PID files and the default {@code http://localhost:11434} endpoint.
      */
     public static Status detect() {
-        LlmClient client = LlmClient.create().withApiType(LlmClient.ApiType.ollama);
+        return detect(LlmClient.create());
+    }
+
+    static Status detect(LlmClient client) {
+        client.withApiType(LlmClient.ApiType.ollama);
         if (!client.detectEndpoint()) {
             return Status.notRunning();
         }

@@ -23,6 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import com.sun.net.httpserver.HttpServer;
+import org.apache.camel.dsl.jbang.core.commands.LlmClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -37,6 +38,17 @@ class OllamaDoctorSupportTest {
         if (server != null) {
             server.stop(0);
         }
+    }
+
+    @Test
+    void detectReturnsNotRunningWhenEndpointUnreachable() {
+        LlmClient client = LlmClient.create().withApiType(LlmClient.ApiType.ollama).withUrl("http://127.0.0.1:1");
+
+        OllamaDoctorSupport.Status status = OllamaDoctorSupport.detect(client);
+
+        assertThat(status.running()).isFalse();
+        assertThat(status.baseUrl()).isNull();
+        assertThat(status.models()).isEmpty();
     }
 
     @Test
@@ -99,13 +111,9 @@ class OllamaDoctorSupportTest {
     }
 
     private OllamaDoctorSupport.Status detectAt(String baseUrl) {
-        return new OllamaDoctorSupport.Status(
-                true,
-                baseUrl,
-                org.apache.camel.dsl.jbang.core.commands.LlmClient.create()
-                        .withApiType(org.apache.camel.dsl.jbang.core.commands.LlmClient.ApiType.ollama)
-                        .withUrl(baseUrl)
-                        .listModels());
+        LlmClient client = LlmClient.create().withApiType(LlmClient.ApiType.ollama).withUrl(baseUrl);
+        assertThat(client.detectEndpoint()).isTrue();
+        return new OllamaDoctorSupport.Status(true, client.endpointUrl(), client.listModels());
     }
 
     private String startOllamaServer(String apiTagsBody) throws IOException {

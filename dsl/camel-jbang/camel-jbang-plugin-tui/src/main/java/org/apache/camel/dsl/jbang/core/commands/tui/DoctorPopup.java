@@ -291,15 +291,22 @@ class DoctorPopup {
 
     static void addAiProviderLines(List<Line> result, String cloudProvider, OllamaDoctorSupport.Status ollama) {
         String provider = cloudProvider;
+        boolean ollamaReady = ollama.running() && ollama.models() != null && !ollama.models().isEmpty();
         if (provider == null && ollama.running()) {
-            provider = "Ollama (local)";
+            provider = ollamaReady ? "Ollama (local)" : "Ollama (no models)";
         }
         if (provider != null) {
+            String emoji = (cloudProvider != null || ollamaReady) ? TuiIcons.OK : TuiIcons.WARN;
             result.add(Line.from(
                     Span.raw(TuiIcons.indent(TuiIcons.MCP)),
                     Span.styled(String.format("%-14s", "AI"), Theme.muted()),
                     Span.raw(String.format("%-30s", provider)),
-                    Span.raw(" " + TuiIcons.OK)));
+                    Span.raw(" " + emoji)));
+            if (ollama.running() && !ollamaReady && cloudProvider == null) {
+                result.add(Line.from(Span.styled(
+                        "                    Run: ollama pull <model> for local AI (F8)",
+                        Style.EMPTY.dim())));
+            }
         } else {
             result.add(Line.from(
                     Span.raw(TuiIcons.indent(TuiIcons.MCP)),
@@ -350,10 +357,9 @@ class DoctorPopup {
                     Span.raw(String.format("%-30s", OllamaDoctorSupport.tuiRunningSummary(status, 30))),
                     Span.raw(" " + TuiIcons.OK)));
             String models = OllamaDoctorSupport.formatModels(status.models());
-            if (models.length() > 52) {
-                models = models.substring(0, 49) + "...";
-            }
-            result.add(Line.from(Span.styled("                    models: " + models, Style.EMPTY.dim())));
+            result.add(Line.from(Span.styled(
+                    "                    models: " + TuiHelper.truncate(models, 34),
+                    Style.EMPTY.dim())));
         } else {
             result.add(Line.from(
                     Span.raw(TuiIcons.indent(TuiIcons.MCP)),
@@ -361,7 +367,7 @@ class DoctorPopup {
                     Span.raw(String.format("%-30s", "Not detected (optional)")),
                     Span.raw(" " + TuiIcons.WARN)));
             result.add(Line.from(Span.styled(
-                    "                    brew install ollama && ollama serve for local AI (F8)",
+                    "                    " + TuiHelper.truncate("Start Ollama (ollama serve) for local AI", 40),
                     Style.EMPTY.dim())));
         }
     }
