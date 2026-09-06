@@ -50,6 +50,7 @@ import org.apache.camel.catalog.DefaultCamelCatalog;
 import org.apache.camel.dsl.jbang.core.common.CommandLineHelper;
 import org.apache.camel.dsl.jbang.core.common.EnvironmentHelper;
 import org.apache.camel.dsl.jbang.core.common.ExampleHelper;
+import org.apache.camel.dsl.jbang.core.common.GenAiDependencyHelper;
 import org.apache.camel.dsl.jbang.core.common.JavaVersionCompletionCandidates;
 import org.apache.camel.dsl.jbang.core.common.LauncherHelper;
 import org.apache.camel.dsl.jbang.core.common.LoggingLevelCompletionCandidates;
@@ -166,6 +167,7 @@ public class Run extends CamelCommand {
     public long spawnPid;
 
     private Printer quietPrinter;
+    private boolean mcpStdioMode;
 
     @Parameters(description = "The Camel file(s) to run. If no files specified then application.properties is used as source for which files to run.",
                 arity = "0..9", paramLabel = "<files>", parameterConsumer = FilesConsumer.class)
@@ -609,6 +611,14 @@ public class Run extends CamelCommand {
         return "true".equals(val);
     }
 
+    private boolean isMcpStdioEnabled(Properties profileProperties) {
+        if (serverOptions.mcpStdio) {
+            return true;
+        }
+        return profileProperties != null
+                && "stdio".equalsIgnoreCase(profileProperties.getProperty("camel.server.mcp-transport", "").trim());
+    }
+
     private void writeSetting(KameletMain main, Properties existing, String key, Supplier<String> value) {
         String val = existing != null ? existing.getProperty(key, value.get()) : value.get();
         if (val != null) {
@@ -696,7 +706,8 @@ public class Run extends CamelCommand {
         }
 
         Properties profileProperties = !empty ? loadProfileProperties(baseDir) : null;
-        configureLogging(baseDir);
+        mcpStdioMode = isMcpStdioEnabled(profileProperties);
+        configureLogging(baseDir, profileProperties);
         if (openapi != null) {
             generateOpenApi();
         }
@@ -1261,12 +1272,16 @@ public class Run extends CamelCommand {
             dependencies.add("camel:observability-services");
             main.addOverrideProperty("camel.metrics.logMetricsOnShutdown", "false");
         }
+        GenAiDependencyHelper.addAiObservabilityIfNeeded(dependencies, profileProperties, serverOptions.observe);
         if (serverOptions.openapiUi) {
             dependencies.add("camel:platform-http-main");
             dependencies.add("camel:openapi-java");
             applyOpenApiUiRuntimeOptions(main);
         }
-        if (isMcpEnabled(profileProperties)) {
+        if (isMcpStdioEnabled(profileProperties)) {
+            dependencies.add("camel:mcp-server");
+            applyMcpStdioRuntimeOptions(main, profileProperties);
+        } else if (isMcpEnabled(profileProperties)) {
             dependencies.add("camel:platform-http-main");
             dependencies.add("camel:mcp-server");
         }
@@ -2669,7 +2684,7 @@ public class Run extends CamelCommand {
         return main;
     }
 
-    private void configureLogging(Path baseDir) throws Exception {
+    private void configureLogging(Path baseDir, Properties profileProperties) throws Exception {
         if (loggingOptions.logging) {
             // allow to configure individual logging levels in application.properties
             Properties prop = loadProfileProperties(baseDir);
@@ -2698,7 +2713,7 @@ public class Run extends CamelCommand {
             }
             RuntimeUtil.configureLog(loggingOptions.loggingLevel, loggingOptions.loggingColor,
                     loggingOptions.loggingJson, scriptRun, false, loggingOptions.loggingConfigPath,
-                    loggingOptions.loggingCategory);
+                    loggingOptions.loggingCategory, mcpStdioMode);
             writeSettings("loggingLevel", loggingOptions.loggingLevel);
             writeSettings("loggingColor", loggingOptions.loggingColor ? "true" : "false");
             writeSettings("loggingJson", loggingOptions.loggingJson ? "true" : "false");
@@ -3107,6 +3122,17 @@ public class Run extends CamelCommand {
                               + "Also binds the management server to 127.0.0.1 (affecting health/metrics when --observe is used).")
         boolean mcp;
 
+        @Option(names = { "--mcp-stdio" }, defaultValue = "false",
+                description = "Expose tagged ai-tool routes as MCP tools over process stdin/stdout for IDE subprocess "
+                              + "integration (no HTTP port). Requires --mcp-tags or camel.server.mcp-tags. "
+                              + "Logging and startup summaries are routed to stderr so stdout carries MCP protocol only.")
+        boolean mcpStdio;
+
+        @Option(names = { "--mcp-tags" },
+                description = "Comma-separated ai-tool tags to expose when --mcp-stdio is enabled (maps to "
+                              + "camel.server.mcp-tags)")
+        String mcpTags;
+
         @Option(names = { "--openapi-ui" }, defaultValue = "false",
                 description = "Swagger UI for REST OpenAPI at /q/openapi (OpenAPI document at /q/openapi.json; port 8080 by default)")
         boolean openapiUi;
@@ -3151,6 +3177,29 @@ public class Run extends CamelCommand {
         main.addOverrideProperty("camel.management.openapiUiEnabled", "true");
         main.addOverrideProperty("camel.server.enabled", "true");
         main.addOverrideProperty("camel.management.enabled", "true");
+    }
+
+    void applyMcpStdioRuntimeOptions(KameletMain main, Properties profileProperties) {
+        if (!isMcpStdioEnabled(profileProperties)) {
+            return;
+        }
+        if (isMcpEnabled(profileProperties)) {
+            throw new IllegalArgumentException(
+                    "--mcp-stdio and --mcp cannot be used together: --mcp serves dev/diagnostics "
+                                               + "tools over HTTP management, while --mcp-stdio serves ai-tool routes over stdin/stdout.");
+        }
+        if (serverOptions.mcpStdio) {
+            main.addOverrideProperty("camel.server.mcp-enabled", "true");
+            main.addOverrideProperty("camel.server.mcp-transport", "stdio");
+            if (serverOptions.mcpTags != null && !serverOptions.mcpTags.isBlank()) {
+                main.addOverrideProperty("camel.server.mcp-tags", serverOptions.mcpTags);
+            }
+        } else {
+            writeSetting(main, profileProperties, "camel.server.mcp-enabled", "true");
+            writeSetting(main, profileProperties, "camel.server.mcp-transport", "stdio");
+        }
+        main.addOverrideProperty("camel.main.startupSummaryLevel", "Off");
+        main.setSilent(true);
     }
 
     static class FilesConsumer extends ParameterConsumer<Run> {
@@ -3200,8 +3249,8 @@ public class Run extends CamelCommand {
 
     @Override
     protected Printer printer() {
-        if (exportRun && (!loggingOptions.logging && !verbose)) {
-            // Export run should be silent unless in logging or verbose mode
+        if (mcpStdioMode || (exportRun && (!loggingOptions.logging && !verbose))) {
+            // MCP stdio mode and export silent runs must not write diagnostics to stdout
             if (quietPrinter == null) {
                 quietPrinter = new Printer.QuietPrinter(super.printer());
             }
