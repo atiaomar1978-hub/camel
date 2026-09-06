@@ -38,6 +38,7 @@ import org.apache.camel.tooling.model.LanguageModel;
 import org.apache.camel.tooling.model.PojoBeanModel;
 import org.apache.camel.tooling.model.ReleaseModel;
 import org.apache.camel.tooling.model.SecurityAdvisoryModel;
+import org.apache.camel.util.json.JsonObject;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -1243,6 +1244,18 @@ public class CamelCatalogTest {
     }
 
     @Test
+    public void testValidateSimpleJSonPathFunction() {
+        // CAMEL-24585: a simple expression that delegates to the jsonpath language must validate
+        // even though the tooling uses a bare CamelContext without a type converter
+        LanguageValidationResult result = catalog.validateLanguageExpression(null, "simple", "${jsonpath($.foo)}");
+        assertTrue(result.isSuccess());
+        assertEquals("${jsonpath($.foo)}", result.getText());
+
+        result = catalog.validateLanguagePredicate(null, "simple", "${jsonpath($.store.book[?(@.price < 10)])} != null");
+        assertTrue(result.isSuccess());
+    }
+
+    @Test
     public void testValidateJQLanguage() {
         LanguageValidationResult result = catalog.validateLanguagePredicate(null, "jq", ".foo == \"bar\"");
         assertTrue(result.isSuccess());
@@ -1770,6 +1783,46 @@ public class CamelCatalogTest {
         Assertions.assertTrue(advisory.getFixed().contains("4.10.2"));
         Assertions.assertEquals("https://camel.apache.org/security/CVE-2025-27636.html", advisory.getUrl());
         Assertions.assertTrue(advisory.getComponents().contains("camel-bean"));
+    }
+
+    @Test
+    public void devConsolesOpenApiSpec() {
+        String json = catalog.devConsolesOpenApiSpec();
+        Assertions.assertNotNull(json);
+
+        JsonObject doc = JsonMapper.deserialize(json);
+        Assertions.assertEquals("3.0.3", doc.getString("openapi"));
+
+        JsonObject paths = doc.getJsonObject("paths");
+        Assertions.assertNotNull(paths);
+
+        JsonObject context = paths.getJsonObject("/q/dev/context");
+        Assertions.assertNotNull(context);
+        Assertions.assertNotNull(context.getJsonObject("get"));
+        Assertions.assertNull(context.get("post"));
+
+        JsonObject route = paths.getJsonObject("/q/dev/route");
+        Assertions.assertNotNull(route);
+        Assertions.assertNull(route.get("get"));
+        JsonObject post = route.getJsonObject("post");
+        Assertions.assertNotNull(post);
+        Assertions.assertNotNull(post.getJsonObject("requestBody"));
+
+        // a console migrated to an authoritative typed Response record has a real response schema
+        JsonObject circuitBreaker = paths.getJsonObject("/q/dev/circuit-breaker");
+        JsonObject cbSchema = circuitBreaker.getJsonObject("get").getJsonObject("responses").getJsonObject("200")
+                .getJsonObject("content").getJsonObject("application/json").getJsonObject("schema");
+        Assertions.assertNotNull(cbSchema);
+        Assertions.assertEquals("object", cbSchema.getString("type"));
+        Assertions.assertNotNull(cbSchema.getJsonObject("properties").getJsonObject("circuitBreakers"));
+
+        // api is intentionally never migrated - its response IS a full OpenAPI document dynamically
+        // assembled from every registered console's model, not a fixed shape to describe, so it's a
+        // stable example of the empty placeholder
+        JsonObject api = paths.getJsonObject("/q/dev/api");
+        JsonObject apiContent = api.getJsonObject("get").getJsonObject("responses").getJsonObject("200")
+                .getJsonObject("content").getJsonObject("application/json");
+        Assertions.assertTrue(apiContent.isEmpty());
     }
 
     @Test
