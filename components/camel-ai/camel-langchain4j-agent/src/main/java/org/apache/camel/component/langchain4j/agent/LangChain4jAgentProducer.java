@@ -49,6 +49,13 @@ import dev.langchain4j.service.tool.ToolProviderResult;
 import org.apache.camel.Exchange;
 import org.apache.camel.Message;
 import org.apache.camel.RuntimeCamelException;
+import org.apache.camel.component.ai.observability.GenAiErrorSupport;
+import org.apache.camel.component.ai.observability.GenAiModelResolver;
+import org.apache.camel.component.ai.observability.GenAiObservability;
+import org.apache.camel.component.ai.observability.GenAiObservation;
+import org.apache.camel.component.ai.observability.GenAiObservationContext;
+import org.apache.camel.component.ai.observability.GenAiOperationName;
+import org.apache.camel.component.ai.observability.GenAiUsage;
 import org.apache.camel.component.ai.tool.AiToolExecutor;
 import org.apache.camel.component.ai.tool.AiToolRegistry;
 import org.apache.camel.component.ai.tool.AiToolResult;
@@ -114,10 +121,30 @@ public class LangChain4jAgentProducer extends DefaultProducer {
             }
         }
 
+        if (hasToolCallingEndpointOptions(endpoint.getConfiguration())) {
+            if (endpoint.getConfiguration().getAgentConfiguration() == null) {
+                throw new IllegalArgumentException(
+                        "maxToolCallingRoundTrips, compensateOnToolErrors, and executeToolsConcurrently require "
+                                                   + "agentConfiguration to be set (inline agent creation mode). "
+                                                   + "They cannot be used with a user-provided agent bean or agentFactory.");
+            }
+            if (endpoint.getConfiguration().getAgent() != null) {
+                throw new IllegalArgumentException(
+                        "Tool-calling endpoint options cannot be combined with a user-provided agent bean. "
+                                                   + "They only work in inline agent creation mode (agentConfiguration without agent or agentFactory).");
+            }
+            if (endpoint.getConfiguration().getAgentFactory() != null) {
+                throw new IllegalArgumentException(
+                        "Tool-calling endpoint options cannot be combined with agentFactory. "
+                                                   + "They only work in inline agent creation mode (agentConfiguration without agent or agentFactory).");
+            }
+        }
+
         if (endpoint.getConfiguration().getAgent() != null) {
             agent = endpoint.getConfiguration().getAgent();
         } else if (endpoint.getConfiguration().getAgentConfiguration() != null) {
             AgentConfiguration agentConfiguration = endpoint.getConfiguration().getAgentConfiguration().duplicate();
+            applyEndpointToolCallingOptions(agentConfiguration, endpoint.getConfiguration());
             resolveExecuteToolsConcurrentlyExecutor(agentConfiguration);
             agent = agentConfiguration.getChatMemoryProvider() != null
                     ? new AgentWithMemory(agentConfiguration)
@@ -137,17 +164,64 @@ public class LangChain4jAgentProducer extends DefaultProducer {
         String tags = endpoint.getConfiguration().getTags();
 
         Agent agent = agentFactory != null ? agentFactory.createAgent(exchange) : this.agent;
+        if (agent == null && agentFactory == null) {
+            // Support an agent configured on the endpoint after the route started, and give a clear error
+            // instead of an opaque NullPointerException when nothing resolves to an agent.
+            agent = endpoint.getConfiguration().getAgent();
+            if (agent == null) {
+                throw new IllegalArgumentException(
+                        "No agent could be resolved for endpoint " + endpoint.getEndpointUri()
+                                                   + ". Configure 'agent', 'agentConfiguration' or 'agentFactory', or bind a bean named '"
+                                                   + endpoint.getAgentId() + "' of type " + Agent.class.getName()
+                                                   + " in the registry.");
+            }
+        }
 
         AiAgentBody<?> aiAgentBody = exchange.getMessage().getMandatoryBody(AiAgentBody.class);
 
         ToolProvider toolProvider = createComposedToolProvider(tags, exchange);
-        Result<String> result = agent.chat(aiAgentBody, toolProvider);
-        exchange.getMessage().setBody(result.content());
-        populateResultHeaders(result, exchange);
+        Object chatModel = resolveChatModel(agent);
+        GenAiObservationContext observationContext = GenAiObservationContext.builder()
+                .operationName(GenAiOperationName.GENERATE_CONTENT)
+                .system(GenAiModelResolver.resolveSystem(exchange.getContext().getClassResolver(), chatModel))
+                .requestModel(GenAiModelResolver.resolveModelName(exchange.getContext().getClassResolver(), chatModel))
+                .componentScheme("langchain4j-agent")
+                .build();
+        GenAiObservation observation = GenAiObservability.start(exchange, observationContext);
+        try {
+            Result<String> result = agent.chat(aiAgentBody, toolProvider);
+            exchange.getMessage().setBody(result.content());
+            populateResultHeaders(result, exchange, observationContext.requestModel());
+            observation.recordSuccess(GenAiUsage.of(
+                    result.tokenUsage() != null ? result.tokenUsage().inputTokenCount() : null,
+                    result.tokenUsage() != null ? result.tokenUsage().outputTokenCount() : null,
+                    result.finishReason(),
+                    null));
+        } catch (RuntimeException e) {
+            GenAiErrorSupport.apply(exchange, e);
+            observation.recordError(e);
+            throw e;
+        } finally {
+            observation.close();
+        }
     }
 
-    private void populateResultHeaders(Result<String> result, Exchange exchange) {
+    private Object resolveChatModel(Agent agent) {
+        if (endpoint.getConfiguration().getAgentConfiguration() != null) {
+            return endpoint.getConfiguration().getAgentConfiguration().getChatModel();
+        }
+        if (agent instanceof AbstractAgent<?> abstractAgent) {
+            return abstractAgent.getChatModel();
+        }
+        return null;
+    }
+
+    private void populateResultHeaders(Result<String> result, Exchange exchange, String requestModel) {
         Message message = exchange.getMessage();
+
+        if (requestModel != null) {
+            message.setHeader(Headers.REQUEST_MODEL, requestModel);
+        }
 
         if (result.finishReason() != null) {
             message.setHeader(Headers.FINISH_REASON, result.finishReason());
@@ -184,6 +258,25 @@ public class LangChain4jAgentProducer extends DefaultProducer {
                 .newThreadPool(this, "LangChain4jAgentToolExecution", profile);
         agentConfiguration.withExecuteToolsConcurrently(managedToolExecutionExecutor);
         LOG.debug("Registered Camel-managed executor for concurrent LangChain4j tool execution");
+    }
+
+    private static boolean hasToolCallingEndpointOptions(LangChain4jAgentConfiguration configuration) {
+        return configuration.getMaxToolCallingRoundTrips() > 0
+                || configuration.getCompensateOnToolErrors() != null
+                || configuration.getExecuteToolsConcurrently() != null;
+    }
+
+    private static void applyEndpointToolCallingOptions(
+            AgentConfiguration agentConfiguration, LangChain4jAgentConfiguration endpointConfiguration) {
+        if (endpointConfiguration.getMaxToolCallingRoundTrips() > 0) {
+            agentConfiguration.withMaxToolCallingRoundTrips(endpointConfiguration.getMaxToolCallingRoundTrips());
+        }
+        if (endpointConfiguration.getCompensateOnToolErrors() != null) {
+            agentConfiguration.withCompensateOnToolErrors(endpointConfiguration.getCompensateOnToolErrors());
+        }
+        if (endpointConfiguration.getExecuteToolsConcurrently() != null) {
+            agentConfiguration.withExecuteToolsConcurrentlyEnabled(endpointConfiguration.getExecuteToolsConcurrently());
+        }
     }
 
     /**

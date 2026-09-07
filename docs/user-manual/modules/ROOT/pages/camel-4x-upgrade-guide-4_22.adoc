@@ -11,7 +11,131 @@ Note that manual migration is still required.
 See the xref:camel-upgrade-recipes-tool.adoc[documentation] page for details.
 ====
 
+== Upgrading from 4.22.0 to 4.22.1
+
+=== camel-docling
+
+A `String` message body is no longer interpreted as a location by default. Previously the producer
+inspected the body and, when it started with `http://` or `https://`, handed it to Docling as a remote
+URL to fetch; when it started with `/` or contained `\`, it read it from the local filesystem; otherwise
+it converted it as document content.
+
+The two location readings must now be enabled explicitly:
+
+* `allowUrlSource` (default `false`) - interpret a body starting with `http://` or `https://` as a URL.
+* `allowFilePathSource` (default `false`) - interpret a body starting with `/`, or containing `\`, as a
+  local file path. This also covers the single directory-or-file `String` body accepted by the batch
+  operations.
+
+A route that passes the document itself in the body is unaffected. A route that passes a URL or a path in
+the body must set the matching option, otherwise the exchange fails with an `IllegalArgumentException`
+naming the option to enable.
+
+The `CamelDoclingInputFilePath` header is unchanged and still accepts a path without any opt-in, as are
+`File`, `byte[]` and `InputStream` bodies and the explicit path collections (`List<String>`, `String[]`,
+`List<File>`, `File[]`) used by the batch operations.
+
+A new `inputBaseDirectory` option is also available. When set, every local input path - from the header,
+from a file path body, and from the batch operations - must resolve inside that directory once normalized.
+It is unset by default, which keeps the previous behaviour of accepting any path.
+
+Additionally, a local input path that does not exist is now reported as a `File not found` `IOException`
+before Docling is invoked. Previously the size check silently skipped a path that resolved to nothing and
+the failure surfaced later, from the Docling process or API call.
+=== camel-dynamic-router
+
+The `dynamic-router-control` endpoint no longer takes the subscription `predicate`, or the
+`expressionLanguage` used to compile it, from the incoming control message. A control message that
+supplies either is now rejected with an `IllegalArgumentException`.
+
+The predicate is compiled and then evaluated against every exchange on the channel, so letting the
+control message choose both the language and the expression means the sender of that message decides
+what runs inside the Camel process. Only enable this when control messages can only come from a
+trusted source:
+
+[source,java]
+----
+from("kafka:subscriptions")
+    .unmarshal().json(DynamicRouterControlMessage.class)
+    .to("dynamic-router-control:subscribe?allowPredicateFromMessage=true");
+----
+
+Two alternatives avoid the flag entirely. A control message may still name a `predicateBean`, which
+selects a `Predicate` that the route author bound in the registry; that path is unchanged. The
+control endpoint may also carry `predicate` and `expressionLanguage` as URI parameters, in which case
+every subscription made through that endpoint uses the route author's expression. Subscription
+parameters that the control message does not carry now fall back to the values configured on the
+endpoint.
+
+The option is annotated `security = "insecure:dev"`, so with `camel.main.profile = prod` the default
+policy for that category is `fail`, and an endpoint that sets `allowPredicateFromMessage=true` will
+not start unless you relax `camel.security.insecureDevPolicy`.
+
+The `dynamic-router` endpoint gained an `allowedSchemes` option, an optional comma-separated
+allow-list of component schemes that a subscription destination may resolve to. It is unset by
+default, which allows any scheme, matching the previous behaviour.
+
+=== camel-exec
+
+`allowControlHeaders` is now annotated `security = "insecure:dev"`.
+With `camel.main.profile = prod` the default policy for that category is `fail`,
+so an endpoint or component that sets `allowControlHeaders=true` will not start
+unless you relax `camel.security.insecureDevPolicy`.
+
+When the flag is `false` (the default), any remaining `CamelExecCommand*`,
+`CamelExecExitValues`, or `CamelExecUseStderrOnEmptyStdout` headers are ignored
+and a WARN is logged once per exec endpoint. Those headers never overrode the
+URI without the flag; they were just silent before.
+
+=== camel-ftp, camel-sftp, camel-ftps, camel-mina-sftp, camel-azure-files, camel-smb
+
+The remote-file consumers now ensure the path resolved for a polled file stays within the directory being
+polled. The file name that path is built from is reported by the remote server in its directory listing and is
+not guaranteed to be a single path segment, so a listing entry containing `../` sequences could previously
+resolve to a path outside the configured directory and be used as the operand for retrieving, deleting or
+renaming a file.
+
+The containment check honours the existing `jailStartingDirectory` option (default `true`), consistent with the
+file producer and with the `localWorkDirectory` download path; set `jailStartingDirectory=false` to disable it.
+A file that resolves outside the configured directory is now skipped, and a warning is logged.
+
+Ordinary listings are unaffected, as a listed name is normally a single path segment, and a `../` that still
+resolves back inside the polled directory remains accepted. Two configurations can newly see files skipped: a
+server that reports names navigating above the polled directory, and a `fileName` expression (used when
+`useList=false`) that navigates above it. Set `jailStartingDirectory=false` if such a path is intended.
+
+=== camel-spring-redis - the default serializer applies a deserialization filter
+
+The default serializer, `JdkSerializationRedisSerializer`, now installs a JEP-290
+`java.io.ObjectInputFilter` while reading Redis payloads, resolved through
+`DeserializationFilterHelper`. Previously no filter was applied at all. This affects both the
+consumer, which deserializes the payload of every message published to the subscribed channels,
+and the producer read commands, which deserialize the values stored in Redis.
+
+When no explicit pattern is configured, the JVM-wide `jdk.serialFilter` is honoured if set,
+otherwise the shared Camel default allow-list is applied (it permits standard Java and Apache Camel
+types, denies `java.net.**`, and enforces JEP-290 graph-shape limits). Routes that exchange classes
+outside that allow-list must widen it through the new `deserializationFilter` endpoint option, for
+example:
+
+[source,java]
+----
+from("spring-redis://localhost:6379?command=SUBSCRIBE&channels=myChannel"
+     + "&deserializationFilter=com.example.model.**;java.**;!*")
+----
+
+Setting the `serializer` option to a custom `RedisSerializer` bypasses the filter entirely, since
+Camel then no longer controls how the payload is read.
+
 == Upgrading Camel 4.21 to 4.22
+
+=== camel-tika
+
+The `tikaConfig` and `tikaConfigUri` component options are deprecated for removal in Camel 4.23.
+Apache Tika 4 removes the `TikaConfig` class and XML configuration support; Camel 4.23 provides the
+replacement `tikaLoader` and `tikaConfigFile` options based on Tika's `TikaLoader` and JSON configuration.
+See the https://tika.apache.org/docs/4.0.x/migration-to-4x/migrating-to-4x.html[Tika 4 migration guide]
+for migration details.
 
 === camel-reactive-executor-tomcat
 
@@ -30,6 +154,18 @@ every 30 seconds (evict after consecutive failures on sessions with an open SSE 
 TTL of 5 minutes (evict sessions with no POST/GET activity). Configure with
 `camel.server.mcp-session-keep-alive-interval` and `camel.server.mcp-session-idle-ttl`; set either
 option to `0` to disable that mechanism.
+
+=== camel-ai-tool
+
+`AiToolResult.Success` now carries an optional `structuredContent` field when the tool declares an
+output schema (`outputParameter.*` or `outputSchema`). The MCP bridge maps this to
+`CallToolResult.structuredContent` and publishes `Tool.outputSchema` to MCP clients. LangChain4j
+and Spring AI adapters continue to use the string `value()` only.
+
+SPI extensions in this release (before 4.22 ships): `McpToolCallResult` gains a third
+`structuredContent` component; `McpServerTool` adds `outputSchemaJson()`; `AiToolSpec` constructor
+accepts output schema fields. Custom `McpServerEngine` implementations should forward structured
+content when present.
 
 === camel-core
 
@@ -1744,3 +1880,10 @@ they say:
   `CamelGoogleVertexAIStreamOutputMode` header.
 * `jsonMode=true` sets the response MIME type of the request to `application/json`, so the model is
   asked to answer with JSON. The default `false` leaves the request untouched.
+
+=== camel-core - REST client request validation and binary bodies
+
+When `clientRequestValidation` is enabled and the REST service declares a required body, the incoming
+message body is no longer replaced with a `String` version of itself. That conversion corrupted binary
+payloads such as `application/octet-stream`. The body is still read to check that it is present, using
+stream caching so it stays re-readable, but it now keeps its original type.
