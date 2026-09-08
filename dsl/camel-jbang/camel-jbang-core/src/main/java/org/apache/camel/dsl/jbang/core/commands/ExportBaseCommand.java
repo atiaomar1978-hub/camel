@@ -51,6 +51,7 @@ import java.util.stream.Stream;
 
 import org.apache.camel.dsl.jbang.core.commands.catalog.KameletCatalogHelper;
 import org.apache.camel.dsl.jbang.core.common.CommandLineHelper;
+import org.apache.camel.dsl.jbang.core.common.GenAiDependencyHelper;
 import org.apache.camel.dsl.jbang.core.common.HawtioVersion;
 import org.apache.camel.dsl.jbang.core.common.JavaVersionCompletionCandidates;
 import org.apache.camel.dsl.jbang.core.common.LoggingLevelCompletionCandidates;
@@ -811,14 +812,36 @@ public abstract class ExportBaseCommand extends CamelCommand {
             answer.add("mvn:org.hibernate.orm:hibernate-core");
         }
 
-        // remove duplicate versions (keep first)
-        Map<String, String> versions = new HashMap<>();
+        // add GenAI observability when silent-run / profile deps already include GenAI artifacts
+        Properties exportProperties = new Properties();
+        if (profile != null && Files.exists(profile)) {
+            RuntimeUtil.loadProperties(exportProperties, profile);
+        }
+        GenAiDependencyHelper.addAiObservabilityIfNeeded(answer, exportProperties, observe);
+
+        // remove duplicate versions (keep first) but an explicit --dep version always wins over
+        // an auto-detected dependency for the same groupId:artifactId (e.g. a JDBC driver whose
+        // version is inferred from the camel-dependencies BOM)
+        Set<String> preferred = new HashSet<>();
+        for (String d : dependencies) {
+            String line = normalizeDependency(d);
+            MavenGav gav = MavenGav.parseGav(line);
+            if (gav.getVersion() != null && !gav.getVersion().isBlank()) {
+                preferred.add(line);
+            }
+        }
+        Map<String, String> kept = new HashMap<>();
         Set<String> toBeRemoved = new HashSet<>();
         for (String line : answer) {
             MavenGav gav = MavenGav.parseGav(line);
             String ga = gav.getGroupId() + ":" + gav.getArtifactId();
-            if (!versions.containsKey(ga)) {
-                versions.put(ga, gav.getVersion());
+            String existing = kept.get(ga);
+            if (existing == null) {
+                kept.put(ga, line);
+            } else if (preferred.contains(line) && !preferred.contains(existing)) {
+                // the user-supplied --dep version takes precedence over the auto-detected one
+                toBeRemoved.add(existing);
+                kept.put(ga, line);
             } else {
                 toBeRemoved.add(line);
             }
