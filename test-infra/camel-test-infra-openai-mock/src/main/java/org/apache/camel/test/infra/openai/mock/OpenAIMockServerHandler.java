@@ -33,6 +33,9 @@ public class OpenAIMockServerHandler implements HttpHandler {
     private final AudioTranscriptionRequestHandler audioTranscriptionRequestHandler;
     private final AudioTranscriptionRequestHandler audioTranslationRequestHandler;
     private final SpeechRequestHandler speechRequestHandler;
+    private final ModerationRequestHandler moderationRequestHandler;
+    private final ImageRequestHandler imageGenerationRequestHandler;
+    private final ImageRequestHandler imageEditRequestHandler;
 
     public OpenAIMockServerHandler(OpenAIMockExpectations expectations, ObjectMapper objectMapper) {
         this.chatRequestHandler = new RequestHandler(expectations.chat(), objectMapper);
@@ -43,6 +46,10 @@ public class OpenAIMockServerHandler implements HttpHandler {
         this.audioTranslationRequestHandler
                 = new AudioTranscriptionRequestHandler(expectations.translations(), objectMapper);
         this.speechRequestHandler = new SpeechRequestHandler(expectations.speeches(), objectMapper);
+        this.moderationRequestHandler = new ModerationRequestHandler(expectations.moderations(), objectMapper);
+        this.imageGenerationRequestHandler
+                = new ImageRequestHandler(expectations.imageGenerations(), objectMapper, false);
+        this.imageEditRequestHandler = new ImageRequestHandler(expectations.imageEdits(), objectMapper, true);
     }
 
     @Override
@@ -64,6 +71,12 @@ public class OpenAIMockServerHandler implements HttpHandler {
                     response = audioTranslationRequestHandler.handleRequest(exchange);
                 } else if (path.endsWith("/embeddings")) {
                     response = embeddingRequestHandler.handleRequest(exchange);
+                } else if (path.endsWith("/images/generations")) {
+                    response = imageGenerationRequestHandler.handleRequest(exchange);
+                } else if (path.endsWith("/images/edits")) {
+                    response = imageEditRequestHandler.handleRequest(exchange);
+                } else if (path.endsWith("/moderations")) {
+                    response = moderationRequestHandler.handleRequest(exchange);
                 } else if (path.endsWith("/responses")) {
                     response = responsesRequestHandler.handleRequest(exchange);
                 } else {

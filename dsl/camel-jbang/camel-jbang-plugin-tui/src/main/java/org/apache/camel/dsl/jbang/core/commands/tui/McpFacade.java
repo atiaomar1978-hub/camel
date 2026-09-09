@@ -35,11 +35,13 @@ import dev.tamboui.tui.event.KeyCode;
 import dev.tamboui.tui.event.KeyEvent;
 import dev.tamboui.tui.event.KeyModifiers;
 import dev.tamboui.widgets.tabs.TabsState;
+import org.apache.camel.dsl.jbang.core.common.CommandLineHelper;
 import org.apache.camel.dsl.jbang.core.common.RuntimeHelper;
 import org.apache.camel.util.json.JsonArray;
 import org.apache.camel.util.json.JsonObject;
 
 import static org.apache.camel.dsl.jbang.core.commands.tui.TuiHelper.hint;
+import static org.apache.camel.dsl.jbang.core.commands.tui.TuiHelper.hintLast;
 
 /**
  * Facade that exposes monitor state and actions to the MCP server.
@@ -106,6 +108,7 @@ class McpFacade {
     private final MonitorBridge bridge;
 
     private volatile Supplier<List<AiPanel.LogEntry>> aiActivityLog;
+    private volatile StatusFileReader statusFiles = StatusFileReader.defaultReader();
     private volatile Supplier<List<TuiMcpServer.LogEntry>> mcpActivityLog;
     private volatile Supplier<Integer> mcpToolCallCount;
 
@@ -339,11 +342,67 @@ class McpFacade {
         return tab != null ? tab.isDetailFocused() : null;
     }
 
+    /**
+     * Reader for the per-process status documents; replaceable so tests can point it at a temporary directory.
+     */
+    StatusFileReader statusFiles() {
+        return statusFiles;
+    }
+
+    void setStatusFiles(StatusFileReader statusFiles) {
+        this.statusFiles = statusFiles;
+    }
+
+    /**
+     * Integrations currently monitored (vanished processes excluded), for callers that need pid and name.
+     */
+    List<IntegrationInfo> liveIntegrations() {
+        List<IntegrationInfo> all = data.get();
+        return all == null ? List.of() : all.stream().filter(i -> !i.vanishing).toList();
+    }
+
     List<String> getIntegrationNames() {
         return data.get().stream()
                 .filter(i -> !i.vanishing)
                 .map(i -> i.name != null ? i.name : i.pid)
                 .toList();
+    }
+
+    /**
+     * Infra services (brokers, databases, ...) started with {@code camel infra run} that are still alive.
+     */
+    List<InfraInfo> liveInfraServices() {
+        if (ctx == null || ctx.infraData == null) {
+            return List.of();
+        }
+        List<InfraInfo> all = ctx.infraData.get();
+        return all == null ? List.of() : all.stream().filter(i -> !i.vanishing).toList();
+    }
+
+    InfraInfo findInfra(String aliasOrPid) {
+        return InfraSupport.find(liveInfraServices(), aliasOrPid);
+    }
+
+    /** Alias of the infra service selected in Overview, or null when an integration (or nothing) is selected. */
+    String getSelectedInfraAlias() {
+        InfraInfo infra = ctx != null ? ctx.findSelectedInfra() : null;
+        return infra != null ? infra.alias : null;
+    }
+
+    JsonObject getInfraLogData(InfraInfo info, int limit, String filter) throws IOException {
+        List<String> lines = InfraSupport.readLogTail(CommandLineHelper.getCamelDir(), info, limit, filter);
+        JsonObject result = new JsonObject();
+        result.put("infra", info.alias);
+        result.put("pid", info.pid);
+        JsonArray arr = new JsonArray();
+        arr.addAll(lines);
+        result.put("lines", arr);
+        result.put("returnedLines", lines.size());
+        return result;
+    }
+
+    boolean stopInfra(InfraInfo info) {
+        return InfraSupport.stop(CommandLineHelper.getCamelDir(), info);
     }
 
     // ---- Key injection ----
@@ -427,17 +486,54 @@ class McpFacade {
 
     // ---- Data access ----
 
+    /** How long a table read waits for a tab that loads its data on demand. The connector action timeout is 5s. */
+    static final long ON_DEMAND_LOAD_TIMEOUT_MS = 8_000;
+
     JsonObject getTableData(String tabName) {
-        MonitorTab tab;
-        if (tabName != null && !tabName.isBlank()) {
-            tab = tabRegistry.findTabByName(tabName);
-            if (tab == null) {
-                return null;
-            }
-        } else {
-            tab = bridge.activeTab();
+        MonitorTab tab = resolveTab(tabName);
+        return tab != null ? awaitTableData(tab, ON_DEMAND_LOAD_TIMEOUT_MS) : null;
+    }
+
+    /**
+     * Why {@link #getTableData(String)} returned nothing for the tab: unknown tab, a load error, or an empty tab.
+     */
+    String tableDataError(String tabName) {
+        MonitorTab tab = resolveTab(tabName);
+        if (tab == null) {
+            return tabName != null && !tabName.isBlank() ? "Unknown tab: " + tabName : "No active tab";
         }
-        return tab != null ? tab.getTableDataAsJson() : null;
+        String error = tab.dataLoadError();
+        return error != null ? error : "No table data available for tab: " + tabName;
+    }
+
+    private MonitorTab resolveTab(String tabName) {
+        if (tabName != null && !tabName.isBlank()) {
+            return tabRegistry.findTabByName(tabName);
+        }
+        return bridge.activeTab();
+    }
+
+    /**
+     * Reads the tab's table, and when the tab loads its data on demand and has none yet, starts the load and waits
+     * (polling) until data arrives, the load reports an error or an empty result, or the timeout passes. Must not be
+     * called on the render thread, since the loads complete there.
+     */
+    static JsonObject awaitTableData(MonitorTab tab, long timeoutMs) {
+        JsonObject data = tab.getTableDataAsJson();
+        if (data != null || !tab.ensureDataLoaded()) {
+            return data;
+        }
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        while (data == null && System.currentTimeMillis() < deadline && tab.dataLoadError() == null) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+            data = tab.getTableDataAsJson();
+        }
+        return data;
     }
 
     boolean executeAction(String actionName) {
@@ -612,13 +708,11 @@ class McpFacade {
             filesBrowser.renderFooter(spans);
         } else if (bridge.isSwitchPopupVisible() || bridge.isMorePopupVisible()) {
             if (bridge.isSwitchPopupVisible()) {
-                hint(spans, "Up/Down", "select");
                 hint(spans, "Enter", "switch");
-                hint(spans, "Esc", "close");
+                hintLast(spans, "Esc", "close");
             } else {
-                hint(spans, "Up/Down", "select");
                 hint(spans, "Enter", "open");
-                hint(spans, "Esc", "close");
+                hintLast(spans, "Esc", "close");
             }
         } else {
             MonitorTab tab = bridge.activeTab();
@@ -858,6 +952,13 @@ class McpFacade {
         }
         String name = ctx.selectedName();
         return switch (action) {
+            case "reset-stats", "clear-stats" -> {
+                if (ctx.isInfraSelected()) {
+                    yield "Error: cannot reset statistics on infra service";
+                }
+                actionsPopup.executeActionByName("reset-stats");
+                yield "Statistics reset for " + name;
+            }
             case "stop-routes", "pause" -> {
                 if (ctx.isInfraSelected()) {
                     yield "Error: cannot stop routes on infra service";
@@ -921,6 +1022,9 @@ class McpFacade {
             phantom.platform = "Quarkus";
         } else {
             phantom.platform = "Camel";
+        }
+        if (runtime != null) {
+            phantom.camelVersion = DependencyLoader.detectCamelVersion(pomFile);
         }
         ctx.addPhantom(phantom);
         ctx.selectedPid = phantom.pid;

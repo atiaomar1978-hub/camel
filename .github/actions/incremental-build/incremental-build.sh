@@ -30,13 +30,18 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=reactor_timing.sh
+source "${SCRIPT_DIR}/reactor_timing.sh"
+
 echo "Using MVND_OPTS=$MVND_OPTS"
 echo "Using MAVEN_EXTRA_ARGS=${MAVEN_EXTRA_ARGS:-}"
 
 maxNumberOfTestableProjects=50
 
 # Modules excluded from targeted testing (generated code, meta-modules, etc.)
-EXCLUSION_LIST="!:camel-allcomponents,!:dummy-component,!:camel-catalog,!:camel-catalog-console,!:camel-catalog-lucene,!:camel-catalog-maven,!:camel-catalog-suggest,!:camel-route-parser,!:camel-csimple-maven-plugin,!:camel-report-maven-plugin,!:camel-endpointdsl,!:camel-componentdsl,!:camel-endpointdsl-support,!:camel-yaml-dsl,!:camel-kamelet-main,!:camel-yaml-dsl-deserializers,!:camel-yaml-dsl-maven-plugin,!:camel-jbang-core,!:camel-jbang-main,!:camel-jbang-plugin-generate,!:camel-jbang-plugin-edit,!:camel-jbang-plugin-kubernetes,!:camel-jbang-plugin-test,!:camel-launcher,!:camel-jbang-it,!:camel-itest,!:docs,!:apache-camel,!:coverage"
+EXCLUSION_LIST="!:camel-allcomponents,!:dummy-component,!:camel-catalog,!:camel-catalog-console,!:camel-catalog-maven,!:camel-catalog-suggest,!:camel-route-parser,!:camel-report-maven-plugin,!:camel-endpointdsl,!:camel-componentdsl,!:camel-endpointdsl-support,!:camel-yaml-dsl,!:camel-kamelet-main,!:camel-yaml-dsl-deserializers,!:camel-yaml-dsl-maven-plugin,!:camel-jbang-core,!:camel-jbang-main,!:camel-jbang-plugin-generate,!:camel-jbang-plugin-edit,!:camel-jbang-plugin-kubernetes,!:camel-jbang-plugin-test,!:camel-launcher,!:camel-jbang-it,!:camel-itest,!:docs,!:apache-camel,!:coverage"
+
 
 # Allow projects to override the exclusion list
 # (e.g., camel-spring-boot has different modules than main Camel)
@@ -859,6 +864,21 @@ main() {
       if [[ ${totalTestableProjects} -gt ${maxNumberOfTestableProjects} ]]; then
         echo "Too many dependent modules (${totalTestableProjects} > ${maxNumberOfTestableProjects}), testing only the affected modules"
         testedDependents=false
+        # Strip dependency-detected modules (grep + Scalpel) from the build list.
+        # These are "dependents" just like -amd expansion and should be subject
+        # to the same threshold. Without this, Scalpel-detected modules bypass
+        # the threshold and all ~N dependents get tested anyway.
+        dep_module_ids=""
+        final_pl=""
+        if [ -n "$testable_pl" ]; then
+          final_pl="$testable_pl"
+        fi
+        if [ -n "$pom_only_pl" ]; then
+          final_pl="${final_pl:+${final_pl},}${pom_only_pl}"
+        fi
+        if [ -n "$extraModules" ]; then
+          final_pl="${final_pl:+${final_pl},}${extraModules}"
+        fi
       else
         echo "Testing affected modules and their dependents (${totalTestableProjects} modules)"
         use_amd=true
@@ -971,42 +991,15 @@ main() {
   # Check for excluded IT suites that should be run manually
   checkManualItTests "$final_pl" "$comment_file"
 
-  # Append reactor module list from build log
+  # Append reactor module list from build log (with per-module elapsed time)
   if [[ -f "$log" ]]; then
-    local reactor_modules
-    reactor_modules=$(grep '^\[INFO\] Camel ::' "$log" | sed 's/\[INFO\] //' | sed 's/ \..*$//' | sed 's/  *\[.*\]$//' | sed 's/ SUCCESS$//' | sed 's/ FAILURE$//' | sed 's/ SKIPPED$//' | sed 's/  *$//' | sort -u || true)
-    if [[ -n "$reactor_modules" ]]; then
-      local count
-      count=$(echo "$reactor_modules" | wc -l | tr -d ' ')
-      local reactor_label
-      if [[ "${testedDependents}" = "false" ]]; then
-        reactor_label="Build reactor — dependencies compiled but only changed modules were tested"
-      else
-        reactor_label="All tested modules"
-      fi
-
-      echo "" >> "$comment_file"
-      echo "<details><summary>${reactor_label} ($count modules)</summary>" >> "$comment_file"
-      echo "" >> "$comment_file"
-
-      if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
-        echo "" >> "$GITHUB_STEP_SUMMARY"
-        echo "<details><summary><b>${reactor_label} ($count)</b></summary>" >> "$GITHUB_STEP_SUMMARY"
-        echo "" >> "$GITHUB_STEP_SUMMARY"
-      fi
-
-      echo "$reactor_modules" | while read -r m; do
-        [ -n "${GITHUB_STEP_SUMMARY:-}" ] && echo "- $m" >> "$GITHUB_STEP_SUMMARY"
-        echo "- $m" >> "$comment_file"
-      done
-
-      if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
-        echo "" >> "$GITHUB_STEP_SUMMARY"
-        echo "</details>" >> "$GITHUB_STEP_SUMMARY"
-      fi
-      echo "" >> "$comment_file"
-      echo "</details>" >> "$comment_file"
+    local reactor_label
+    if [[ "${testedDependents}" = "false" ]]; then
+      reactor_label="Build reactor — dependencies compiled but only changed modules were tested"
+    else
+      reactor_label="All tested modules"
     fi
+    append_reactor_timing_report "$log" "$comment_file" "$reactor_label" "${GITHUB_STEP_SUMMARY:-}"
   fi
 
   # Write step summary header

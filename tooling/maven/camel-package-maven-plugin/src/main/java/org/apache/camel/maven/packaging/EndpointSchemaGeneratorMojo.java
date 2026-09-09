@@ -409,6 +409,9 @@ public class EndpointSchemaGeneratorMojo extends AbstractGeneratorMojo {
             }
             return false;
         }
+        if (metadata.skip()) {
+            return false;
+        }
         final String[] applicableFor = metadata.applicableFor();
         if (applicableFor.length > 0 && Arrays.stream(applicableFor).noneMatch(s -> s.equals(scheme))) {
             if (getLog().isDebugEnabled()) {
@@ -854,6 +857,12 @@ public class EndpointSchemaGeneratorMojo extends AbstractGeneratorMojo {
         }
         if (!Strings.isNullOrEmpty(firstVersion)) {
             model.setFirstVersion(firstVersion);
+        }
+
+        // aliases (protocol or product names people use for the component) come from @Metadata on the endpoint class
+        Metadata endpointMetadata = endpointClassElement.getAnnotation(Metadata.class);
+        if (endpointMetadata != null && endpointMetadata.aliases().length > 0) {
+            model.setAliases(new ArrayList<>(Arrays.asList(endpointMetadata.aliases())));
         }
 
         model.setDescription(project.getDescription());

@@ -38,6 +38,7 @@ import org.apache.camel.tooling.model.LanguageModel;
 import org.apache.camel.tooling.model.PojoBeanModel;
 import org.apache.camel.tooling.model.ReleaseModel;
 import org.apache.camel.tooling.model.SecurityAdvisoryModel;
+import org.apache.camel.util.json.JsonObject;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -179,6 +180,65 @@ public class CamelCatalogTest {
         assertTrue(names.contains("loadBalance"));
         assertTrue(names.contains("circuitBreaker"));
         assertTrue(names.contains("saga"));
+    }
+
+    @Test
+    public void testComponentAliases() {
+        // aliases declared via @Metadata on the endpoint class end up in the component model
+        ComponentModel mail = catalog.componentModel("imap");
+        assertNotNull(mail);
+        assertTrue(mail.getAliases().contains("mail"));
+        assertTrue(mail.getAliases().contains("email"));
+        assertTrue(catalog.componentModel("activemq").getAliases().contains("amq"));
+    }
+
+    @Test
+    public void testSuggestComponentNames() {
+        // exact scheme first, then words of the title or scheme
+        assertEquals(List.of("aws2-s3", "aws2-s3-vectors"), catalog.suggestComponentNames("s3", 0));
+        assertEquals(List.of("aws2-sqs"), catalog.suggestComponentNames("sqs", 0));
+        assertEquals(List.of("paho-mqtt5"), catalog.suggestComponentNames("mqtt", 0));
+        assertEquals(List.of("spring-rabbitmq"), catalog.suggestComponentNames("rabbitmq", 0));
+        assertEquals(List.of("google-pubsub"), catalog.suggestComponentNames("pubsub", 0));
+        assertEquals(List.of("azure-servicebus"), catalog.suggestComponentNames("servicebus", 0));
+        assertEquals(List.of("azure-servicebus"), catalog.suggestComponentNames("Service-Bus", 0));
+        assertEquals(List.of("kafka", "aws2-msk"), catalog.suggestComponentNames("kafka", 0));
+        // aliases rank right after the exact scheme, substring matches last
+        assertEquals(List.of("activemq", "activemq6", "amqp"), catalog.suggestComponentNames("amq", 0));
+        assertEquals(List.of("paho-mqtt5"), catalog.suggestComponentNames("paho-mqtt", 0));
+        assertTrue(catalog.suggestComponentNames("xyzq", 0).isEmpty());
+        assertTrue(catalog.suggestComponentNames("", 5).isEmpty());
+        assertTrue(catalog.suggestComponentNames(null, 5).isEmpty());
+        // max caps the result
+        List<String> aws = catalog.suggestComponentNames("aws", 0);
+        assertTrue(aws.size() > 5, "aws should match many components, was: " + aws);
+        assertEquals(aws.subList(0, 5), catalog.suggestComponentNames("aws", 5));
+    }
+
+    @Test
+    public void testSuggestComponentNamesDedupesAlternativeSchemes() {
+        // one implementation under several schemes is suggested once, by the scheme that matched
+        assertEquals(List.of("smtp"), catalog.suggestComponentNames("smtp", 0));
+        assertEquals(List.of("https"), catalog.suggestComponentNames("https", 0));
+        // or by its primary scheme when the match came from an alias
+        List<String> mail = catalog.suggestComponentNames("mail", 0);
+        assertEquals("imap", mail.get(0), "mail should suggest the mail component first, was: " + mail);
+        assertFalse(mail.contains("smtp"), "mail should not repeat the mail component, was: " + mail);
+        assertTrue(mail.contains("google-mail"), "mail should also suggest google-mail, was: " + mail);
+    }
+
+    @Test
+    public void testSuggestDataFormatAndLanguageNames() {
+        assertEquals(List.of("snakeYaml"), catalog.suggestDataFormatNames("yaml", 0));
+        List<String> json = catalog.suggestDataFormatNames("json", 0);
+        assertTrue(json.contains("jackson"), "json should suggest jackson, was: " + json);
+        assertTrue(json.contains("gson"), "json should suggest gson, was: " + json);
+        assertEquals("jackson", catalog.suggestDataFormatNames("jackson", 0).get(0));
+
+        assertEquals("simple", catalog.suggestLanguageNames("simple", 0).get(0));
+        List<String> path = catalog.suggestLanguageNames("path", 0);
+        assertTrue(path.contains("xpath"), "path should suggest xpath, was: " + path);
+        assertTrue(path.contains("jsonpath"), "path should suggest jsonpath, was: " + path);
     }
 
     @Test
@@ -1243,6 +1303,18 @@ public class CamelCatalogTest {
     }
 
     @Test
+    public void testValidateSimpleJSonPathFunction() {
+        // CAMEL-24585: a simple expression that delegates to the jsonpath language must validate
+        // even though the tooling uses a bare CamelContext without a type converter
+        LanguageValidationResult result = catalog.validateLanguageExpression(null, "simple", "${jsonpath($.foo)}");
+        assertTrue(result.isSuccess());
+        assertEquals("${jsonpath($.foo)}", result.getText());
+
+        result = catalog.validateLanguagePredicate(null, "simple", "${jsonpath($.store.book[?(@.price < 10)])} != null");
+        assertTrue(result.isSuccess());
+    }
+
+    @Test
     public void testValidateJQLanguage() {
         LanguageValidationResult result = catalog.validateLanguagePredicate(null, "jq", ".foo == \"bar\"");
         assertTrue(result.isSuccess());
@@ -1770,6 +1842,46 @@ public class CamelCatalogTest {
         Assertions.assertTrue(advisory.getFixed().contains("4.10.2"));
         Assertions.assertEquals("https://camel.apache.org/security/CVE-2025-27636.html", advisory.getUrl());
         Assertions.assertTrue(advisory.getComponents().contains("camel-bean"));
+    }
+
+    @Test
+    public void devConsolesOpenApiSpec() {
+        String json = catalog.devConsolesOpenApiSpec();
+        Assertions.assertNotNull(json);
+
+        JsonObject doc = JsonMapper.deserialize(json);
+        Assertions.assertEquals("3.0.3", doc.getString("openapi"));
+
+        JsonObject paths = doc.getJsonObject("paths");
+        Assertions.assertNotNull(paths);
+
+        JsonObject context = paths.getJsonObject("/q/dev/context");
+        Assertions.assertNotNull(context);
+        Assertions.assertNotNull(context.getJsonObject("get"));
+        Assertions.assertNull(context.get("post"));
+
+        JsonObject route = paths.getJsonObject("/q/dev/route");
+        Assertions.assertNotNull(route);
+        Assertions.assertNull(route.get("get"));
+        JsonObject post = route.getJsonObject("post");
+        Assertions.assertNotNull(post);
+        Assertions.assertNotNull(post.getJsonObject("requestBody"));
+
+        // a console migrated to an authoritative typed Response record has a real response schema
+        JsonObject circuitBreaker = paths.getJsonObject("/q/dev/circuit-breaker");
+        JsonObject cbSchema = circuitBreaker.getJsonObject("get").getJsonObject("responses").getJsonObject("200")
+                .getJsonObject("content").getJsonObject("application/json").getJsonObject("schema");
+        Assertions.assertNotNull(cbSchema);
+        Assertions.assertEquals("object", cbSchema.getString("type"));
+        Assertions.assertNotNull(cbSchema.getJsonObject("properties").getJsonObject("circuitBreakers"));
+
+        // api is intentionally never migrated - its response IS a full OpenAPI document dynamically
+        // assembled from every registered console's model, not a fixed shape to describe, so it's a
+        // stable example of the empty placeholder
+        JsonObject api = paths.getJsonObject("/q/dev/api");
+        JsonObject apiContent = api.getJsonObject("get").getJsonObject("responses").getJsonObject("200")
+                .getJsonObject("content").getJsonObject("application/json");
+        Assertions.assertTrue(apiContent.isEmpty());
     }
 
     @Test

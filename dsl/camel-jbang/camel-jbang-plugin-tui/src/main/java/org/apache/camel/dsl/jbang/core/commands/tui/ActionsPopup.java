@@ -19,6 +19,7 @@ package org.apache.camel.dsl.jbang.core.commands.tui;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.IntPredicate;
@@ -483,6 +484,20 @@ class ActionsPopup {
     }
 
     boolean handleKeyEvent(KeyEvent ke) {
+        if (handleChildPopupKeys(ke)) {
+            return true;
+        }
+        if (showActionsMenu) {
+            return handleMenuKeys(ke);
+        }
+        return false;
+    }
+
+    /**
+     * Routes the key to whichever child popup or overlay is currently open (send message, logs, doc viewer, options,
+     * infra browser, run options, folder input, examples, caption, stop-all, doctor, theme, go-to tab, settings).
+     */
+    private boolean handleChildPopupKeys(KeyEvent ke) {
         if (sendMessagePopup.isVisible()) {
             if (ke.isKey(KeyCode.F5) && !sendFileBrowser.isVisible()) {
                 sendMessagePopup.doSend(ctx, ctx.backgroundExecutor);
@@ -590,152 +605,156 @@ class ActionsPopup {
             }
             return true;
         }
-        if (showActionsMenu) {
-            if (ke.isCancel()) {
-                if (currentSubmenu != null) {
+        return false;
+    }
+
+    /**
+     * Keys while the actions menu itself is open: cancel/back, navigation, submenu entry and action execution.
+     */
+    private boolean handleMenuKeys(KeyEvent ke) {
+        if (ke.isCancel()) {
+            if (currentSubmenu != null) {
+                currentSubmenu = null;
+                actionsMenuState.select(savedMainSelection);
+            } else {
+                showActionsMenu = false;
+            }
+        } else if (ke.isUp()) {
+            navigateActionsMenu(-1);
+        } else if (ke.isDown()) {
+            navigateActionsMenu(1);
+        } else if (ke.isPageUp() || ke.isKey(KeyCode.PAGE_UP)) {
+            navigateActionsMenuToSection(-1);
+        } else if (ke.isPageDown() || ke.isKey(KeyCode.PAGE_DOWN)) {
+            navigateActionsMenuToSection(1);
+        } else if (ke.isHome() || ke.isKey(KeyCode.HOME)) {
+            actionsMenuState.select(0);
+            if (isDividerIndex(0)) {
+                navigateActionsMenu(1);
+            }
+        } else if (ke.isEnd() || ke.isKey(KeyCode.END)) {
+            int last = visualActionCount() - 1;
+            actionsMenuState.select(last);
+            if (isDividerIndex(last)) {
+                navigateActionsMenu(-1);
+            }
+        } else if (ke.isConfirm()) {
+            Integer sel = actionsMenuState.selected();
+            if (sel != null) {
+                Action action = resolveAction(sel);
+                if (action == null) {
+                    // divider selected, ignore
+                } else if (action == Action.BACK) {
                     currentSubmenu = null;
                     actionsMenuState.select(savedMainSelection);
-                } else {
+                } else if (action == Action.THEMES_SUBMENU) {
                     showActionsMenu = false;
-                }
-            } else if (ke.isUp()) {
-                navigateActionsMenu(-1);
-            } else if (ke.isDown()) {
-                navigateActionsMenu(1);
-            } else if (ke.isPageUp() || ke.isKey(KeyCode.PAGE_UP)) {
-                navigateActionsMenuToSection(-1);
-            } else if (ke.isPageDown() || ke.isKey(KeyCode.PAGE_DOWN)) {
-                navigateActionsMenuToSection(1);
-            } else if (ke.isHome() || ke.isKey(KeyCode.HOME)) {
-                actionsMenuState.select(0);
-                if (isDividerIndex(0)) {
-                    navigateActionsMenu(1);
-                }
-            } else if (ke.isEnd() || ke.isKey(KeyCode.END)) {
-                int last = visualActionCount() - 1;
-                actionsMenuState.select(last);
-                if (isDividerIndex(last)) {
-                    navigateActionsMenu(-1);
-                }
-            } else if (ke.isConfirm()) {
-                Integer sel = actionsMenuState.selected();
-                if (sel != null) {
-                    Action action = resolveAction(sel);
-                    if (action == null) {
-                        // divider selected, ignore
-                    } else if (action == Action.BACK) {
-                        currentSubmenu = null;
-                        actionsMenuState.select(savedMainSelection);
-                    } else if (action == Action.THEMES_SUBMENU) {
+                    themePopup.open();
+                } else if (action == Action.SCREEN_SUBMENU) {
+                    savedMainSelection = sel;
+                    currentSubmenu = "screen";
+                    actionsMenuState.select(0);
+                } else if (action == Action.MCP_SUBMENU) {
+                    savedMainSelection = sel;
+                    currentSubmenu = "mcp";
+                    actionsMenuState.select(0);
+                } else if (action == Action.GOTO_TAB) {
+                    showActionsMenu = false;
+                    gotoTabPopup.open();
+                } else if (action == Action.SETTINGS) {
+                    showActionsMenu = false;
+                    settingsPopup.open();
+                } else if (action == Action.SWITCH_INTEGRATION) {
+                    if (hasMultipleIntegrations()) {
                         showActionsMenu = false;
-                        themePopup.open();
-                    } else if (action == Action.SCREEN_SUBMENU) {
-                        savedMainSelection = sel;
-                        currentSubmenu = "screen";
-                        actionsMenuState.select(0);
-                    } else if (action == Action.MCP_SUBMENU) {
-                        savedMainSelection = sel;
-                        currentSubmenu = "mcp";
-                        actionsMenuState.select(0);
-                    } else if (action == Action.GOTO_TAB) {
-                        showActionsMenu = false;
-                        gotoTabPopup.open();
-                    } else if (action == Action.SETTINGS) {
-                        showActionsMenu = false;
-                        settingsPopup.open();
-                    } else if (action == Action.SWITCH_INTEGRATION) {
-                        if (hasMultipleIntegrations()) {
-                            showActionsMenu = false;
-                            if (switchIntegrationAction != null) {
-                                switchIntegrationAction.run();
-                            }
+                        if (switchIntegrationAction != null) {
+                            switchIntegrationAction.run();
                         }
-                    } else if (action == Action.SHELL) {
+                    }
+                } else if (action == Action.SHELL) {
+                    showActionsMenu = false;
+                    if (openShellAction != null) {
+                        openShellAction.run();
+                    }
+                } else if (action == Action.RUN_EXAMPLE) {
+                    showActionsMenu = false;
+                    exampleBrowserPopup.open();
+                } else if (action == Action.OPEN_PROJECT) {
+                    showActionsMenu = false;
+                    folderInputPopup.open();
+                } else if (action == Action.SCREENSHOT) {
+                    showActionsMenu = false;
+                    screenshotAction.run();
+                } else if (action == Action.SHOW_KEYSTROKES) {
+                    showActionsMenu = false;
+                    toggleKeystrokes.run();
+                } else if (action == Action.TAPE_RECORDING) {
+                    showActionsMenu = false;
+                    toggleTapeRecording.run();
+                } else if (action == Action.TAPE_INSTRUCTIONS) {
+                    showActionsMenu = false;
+                    openTapeInstructions();
+                } else if (action == Action.BROWSE_FILES) {
+                    if (ctx != null && ctx.selectedPid != null && !ctx.isInfraSelected()) {
                         showActionsMenu = false;
-                        if (openShellAction != null) {
-                            openShellAction.run();
+                        if (browseFilesAction != null) {
+                            browseFilesAction.run();
                         }
-                    } else if (action == Action.RUN_EXAMPLE) {
+                    }
+                } else if (action == Action.DOCTOR) {
+                    showActionsMenu = false;
+                    doctorPopup.open();
+                } else if (action == Action.RUN_INFRA) {
+                    showActionsMenu = false;
+                    infraBrowserPopup.open();
+                } else if (action == Action.AI_PROMPT) {
+                    showActionsMenu = false;
+                    if (openAiPromptAction != null) {
+                        openAiPromptAction.run();
+                    }
+                } else if (action == Action.SETUP_AI) {
+                    showActionsMenu = false;
+                    openSetupAI();
+                } else if (action == Action.MCP_INFO) {
+                    showActionsMenu = false;
+                    openMcpInfo();
+                } else if (action == Action.MCP_LOG) {
+                    showActionsMenu = false;
+                    openMcpLog();
+                } else if (action == Action.AI_LOG) {
+                    showActionsMenu = false;
+                    openAiLog();
+                } else if (action == Action.SEND_MESSAGE) {
+                    if (ctx != null && ctx.selectedPid != null && !ctx.isInfraSelected()) {
                         showActionsMenu = false;
-                        exampleBrowserPopup.open();
-                    } else if (action == Action.OPEN_PROJECT) {
-                        showActionsMenu = false;
-                        folderInputPopup.open();
-                    } else if (action == Action.SCREENSHOT) {
-                        showActionsMenu = false;
-                        screenshotAction.run();
-                    } else if (action == Action.SHOW_KEYSTROKES) {
-                        showActionsMenu = false;
-                        toggleKeystrokes.run();
-                    } else if (action == Action.TAPE_RECORDING) {
-                        showActionsMenu = false;
-                        toggleTapeRecording.run();
-                    } else if (action == Action.TAPE_INSTRUCTIONS) {
-                        showActionsMenu = false;
-                        openTapeInstructions();
-                    } else if (action == Action.BROWSE_FILES) {
-                        if (ctx != null && ctx.selectedPid != null && !ctx.isInfraSelected()) {
-                            showActionsMenu = false;
-                            if (browseFilesAction != null) {
-                                browseFilesAction.run();
-                            }
-                        }
-                    } else if (action == Action.DOCTOR) {
-                        showActionsMenu = false;
-                        doctorPopup.open();
-                    } else if (action == Action.RUN_INFRA) {
-                        showActionsMenu = false;
-                        infraBrowserPopup.open();
-                    } else if (action == Action.AI_PROMPT) {
-                        showActionsMenu = false;
-                        if (openAiPromptAction != null) {
-                            openAiPromptAction.run();
-                        }
-                    } else if (action == Action.SETUP_AI) {
-                        showActionsMenu = false;
-                        openSetupAI();
-                    } else if (action == Action.MCP_INFO) {
-                        showActionsMenu = false;
-                        openMcpInfo();
-                    } else if (action == Action.MCP_LOG) {
-                        showActionsMenu = false;
-                        openMcpLog();
-                    } else if (action == Action.AI_LOG) {
-                        showActionsMenu = false;
-                        openAiLog();
-                    } else if (action == Action.SEND_MESSAGE) {
-                        if (ctx != null && ctx.selectedPid != null && !ctx.isInfraSelected()) {
-                            showActionsMenu = false;
-                            openSendMessage();
-                        }
-                    } else if (action == Action.RESET_STATS) {
-                        showActionsMenu = false;
-                        if (resetStatsAction != null) {
-                            resetStatsAction.run();
-                        }
-                    } else if (action == Action.RESET_SCREEN) {
-                        showActionsMenu = false;
-                        if (resetScreenAction != null) {
-                            resetScreenAction.run();
-                        }
-                    } else if (action == Action.TOGGLE_THEME) {
-                        Theme.toggle();
-                        refreshTheme();
-                        showActionsMenu = false;
-                    } else if (action == Action.CAPTION) {
-                        showActionsMenu = false;
-                        captionOverlay.openInline();
-                    } else if (action == Action.CAMEL_ANIMATION) {
-                        showActionsMenu = false;
-                        if (camelAnimationAction != null) {
-                            camelAnimationAction.run();
-                        }
+                        openSendMessage();
+                    }
+                } else if (action == Action.RESET_STATS) {
+                    showActionsMenu = false;
+                    if (resetStatsAction != null) {
+                        resetStatsAction.run();
+                    }
+                } else if (action == Action.RESET_SCREEN) {
+                    showActionsMenu = false;
+                    if (resetScreenAction != null) {
+                        resetScreenAction.run();
+                    }
+                } else if (action == Action.TOGGLE_THEME) {
+                    Theme.toggle();
+                    refreshTheme();
+                    showActionsMenu = false;
+                } else if (action == Action.CAPTION) {
+                    showActionsMenu = false;
+                    captionOverlay.openInline();
+                } else if (action == Action.CAMEL_ANIMATION) {
+                    showActionsMenu = false;
+                    if (camelAnimationAction != null) {
+                        camelAnimationAction.run();
                     }
                 }
             }
-            return true;
         }
-        return false;
+        return true;
     }
 
     // ---- Mouse handling ----
@@ -929,15 +948,13 @@ class ActionsPopup {
         }
         if (gotoTabPopup.isVisible()) {
             hint(spans, "type", "filter");
-            hint(spans, TuiIcons.HINT_SCROLL, "navigate");
             hint(spans, "Enter", "go to");
             hintLast(spans, "Esc", "back");
             return;
         }
         if (showActionsMenu) {
-            hint(spans, TuiIcons.HINT_SCROLL, "navigate");
             hint(spans, "Enter", "select");
-            hintLast(spans, "Esc", currentSubmenu != null ? "back" : "cancel");
+            hintLast(spans, "Esc", currentSubmenu != null ? "back" : "close");
         }
     }
 
@@ -1358,15 +1375,62 @@ class ActionsPopup {
         docViewerPopup.showFailureLog(name, logFile);
     }
 
+    /**
+     * Maps an F2 menu label (as {@link #getActionLabels()} lists it) to its action. Trailing "..." and shortcut hints
+     * such as "(F3)" are ignored, as is case, so "run doctor", "Run Doctor" and "Screen..." all resolve. Submenu
+     * entries and the ".." back entry have no action of their own and resolve to null.
+     */
+    static Action actionForLabel(String label) {
+        if (label == null) {
+            return null;
+        }
+        String key = label.strip().toLowerCase(Locale.ROOT)
+                .replaceAll("\\s*\\(.*\\)$", "")
+                .replaceAll("\\.+$", "")
+                .strip();
+        return switch (key) {
+            case "go to" -> Action.GOTO_TAB;
+            case "switch integration" -> Action.SWITCH_INTEGRATION;
+            case "send message" -> Action.SEND_MESSAGE;
+            case "run an example", "run example" -> Action.RUN_EXAMPLE;
+            case "open project" -> Action.OPEN_PROJECT;
+            case "run dev/infra service", "run infra service", "run infra" -> Action.RUN_INFRA;
+            case "browse files" -> Action.BROWSE_FILES;
+            case "run doctor" -> Action.DOCTOR;
+            case "reset stats" -> Action.RESET_STATS;
+            case "settings" -> Action.SETTINGS;
+            case "shell" -> Action.SHELL;
+            case "take screenshot" -> Action.SCREENSHOT;
+            case "reset screen" -> Action.RESET_SCREEN;
+            case "start tape recording", "stop tape recording" -> Action.TAPE_RECORDING;
+            case "tape recording guide" -> Action.TAPE_INSTRUCTIONS;
+            case "caption" -> Action.CAPTION;
+            case "show keystrokes", "hide keystrokes" -> Action.SHOW_KEYSTROKES;
+            case "camel animation" -> Action.CAMEL_ANIMATION;
+            case "ai prompt" -> Action.AI_PROMPT;
+            case "setup ai" -> Action.SETUP_AI;
+            case "ai log" -> Action.AI_LOG;
+            case "mcp info" -> Action.MCP_INFO;
+            case "mcp log" -> Action.MCP_LOG;
+            default -> null;
+        };
+    }
+
+    /**
+     * Executes an action given as a kebab-case name ({@code reset-stats}) or as an F2 menu label ({@code Run Doctor}).
+     */
     boolean executeActionByName(String name) {
         if (name == null || name.isBlank()) {
             return false;
         }
-        String normalized = name.replace("-", "_").toUpperCase();
+        String normalized = name.strip().replace("-", "_").toUpperCase(Locale.ROOT);
         Action action;
         try {
             action = Action.valueOf(normalized);
         } catch (IllegalArgumentException e) {
+            action = actionForLabel(name);
+        }
+        if (action == null) {
             return false;
         }
         switch (action) {
@@ -1403,10 +1467,42 @@ class ActionsPopup {
                     camelAnimationAction.run();
                 }
             }
+            // menu entries that open a popup or view, mirroring what Enter does on them
+            case GOTO_TAB -> gotoTabPopup.open();
+            case SETTINGS -> settingsPopup.open();
+            case RUN_EXAMPLE -> exampleBrowserPopup.open();
+            case OPEN_PROJECT -> folderInputPopup.open();
+            case RUN_INFRA -> infraBrowserPopup.open();
+            case TAPE_INSTRUCTIONS -> openTapeInstructions();
+            case SEND_MESSAGE -> {
+                if (ctx == null || ctx.selectedPid == null || ctx.isInfraSelected()) {
+                    return false;
+                }
+                openSendMessage();
+            }
+            case BROWSE_FILES -> {
+                if (ctx == null || ctx.selectedPid == null || ctx.isInfraSelected() || browseFilesAction == null) {
+                    return false;
+                }
+                browseFilesAction.run();
+            }
+            case SWITCH_INTEGRATION -> {
+                if (!hasMultipleIntegrations() || switchIntegrationAction == null) {
+                    return false;
+                }
+                switchIntegrationAction.run();
+            }
+            case SHELL -> {
+                if (openShellAction == null) {
+                    return false;
+                }
+                openShellAction.run();
+            }
             default -> {
                 return false;
             }
         }
+        showActionsMenu = false;
         return true;
     }
 

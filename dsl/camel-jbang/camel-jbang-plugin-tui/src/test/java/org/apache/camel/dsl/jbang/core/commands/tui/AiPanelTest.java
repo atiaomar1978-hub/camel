@@ -17,6 +17,7 @@
 package org.apache.camel.dsl.jbang.core.commands.tui;
 
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
@@ -31,6 +32,7 @@ import dev.tamboui.tui.event.KeyEvent;
 import dev.tamboui.tui.event.KeyModifiers;
 import org.apache.camel.dsl.jbang.core.commands.LlmClient;
 import org.apache.camel.dsl.jbang.core.common.CommandLineHelper;
+import org.apache.camel.util.json.JsonObject;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -646,6 +648,32 @@ class AiPanelTest {
     }
 
     @Test
+    void renderMarksUserTurnWithGutterBarAndLeavesAnswerPlain() throws Exception {
+        AiPanel panel = new AiPanel();
+        RecordingLlmClient client = new RecordingLlmClient("There are three routes running.");
+        panel.setClientForTesting(client);
+        panel.open();
+
+        type(panel, "how many routes");
+        panel.handleKeyEvent(KeyEvent.ofKey(KeyCode.ENTER, KeyModifiers.NONE));
+        assertTrue(client.awaitAnswer(5, TimeUnit.SECONDS));
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted(
+                () -> assertFalse(panel.isAgentThreadRunningForTesting(), "agent thread should finish within 5 seconds"));
+
+        Rect area = new Rect(0, 0, 80, 12);
+        Buffer buffer = Buffer.empty(area);
+        panel.render(Frame.forTesting(buffer), area);
+        String rendered = TuiTestHelper.bufferToString(buffer);
+
+        // the question is rendered as a blockquote whose prefix is the accent gutter bar
+        assertTrue(rendered.contains("\u258e how many routes"), rendered);
+        assertTrue(rendered.contains("There are three routes running."), rendered);
+        // the old bold role labels are gone: the bar marks the turn, the answer needs no label
+        assertFalse(rendered.contains("You:"), rendered);
+        assertFalse(rendered.contains("TUI:"), rendered);
+    }
+
+    @Test
     void tabCompletesSingleMatchAndAppendsSpace() {
         AiPanel panel = new AiPanel();
         panel.open();
@@ -661,13 +689,28 @@ class AiPanelTest {
     void tabCompletesLongestCommonPrefixThenCyclesForward() {
         AiPanel panel = new AiPanel();
         panel.open();
-        type(panel, "/c");
+        type(panel, "/cle");
 
-        // /c matches /clear, /clear-history, and /close, so the first TAB fills in their common prefix.
+        // /cle matches /clear and /clear-history, so the first TAB fills in their common prefix.
         tab(panel);
-        assertEquals("/cl", panel.inputBufferForTesting());
+        assertEquals("/clear", panel.inputBufferForTesting());
 
         // No further prefix can be added, so subsequent TABs cycle through the matches and wrap around.
+        tab(panel);
+        assertEquals("/clear", panel.inputBufferForTesting());
+        tab(panel);
+        assertEquals("/clear-history", panel.inputBufferForTesting());
+        tab(panel);
+        assertEquals("/clear", panel.inputBufferForTesting());
+    }
+
+    @Test
+    void tabCyclesThroughMatchesWhenNoPrefixCanBeAdded() {
+        AiPanel panel = new AiPanel();
+        panel.open();
+        type(panel, "/cl");
+
+        // /cl matches /clear, /clear-history and /close and is already their common prefix, so TAB cycles.
         tab(panel);
         assertEquals("/clear", panel.inputBufferForTesting());
         tab(panel);
@@ -682,11 +725,9 @@ class AiPanelTest {
     void shiftTabCyclesBackward() {
         AiPanel panel = new AiPanel();
         panel.open();
-        type(panel, "/c");
-        tab(panel);
-        assertEquals("/cl", panel.inputBufferForTesting());
+        type(panel, "/cl");
 
-        // Shift+TAB from the common prefix selects the last match, then walks backward through the list.
+        // Shift+TAB selects the last match, then walks backward through the list.
         shiftTab(panel);
         assertEquals("/close", panel.inputBufferForTesting());
         shiftTab(panel);
@@ -710,8 +751,7 @@ class AiPanelTest {
     void editingResetsCompletionCycle() {
         AiPanel panel = new AiPanel();
         panel.open();
-        type(panel, "/c");
-        tab(panel);
+        type(panel, "/cl");
         tab(panel);
         assertEquals("/clear", panel.inputBufferForTesting());
 
@@ -726,6 +766,380 @@ class AiPanelTest {
         assertEquals("/clear", panel.inputBufferForTesting());
         tab(panel);
         assertEquals("/clear-history", panel.inputBufferForTesting());
+    }
+
+    // ---- argument completion tests ----
+
+    @Test
+    void tabCompletesModelNameFromProviderList() {
+        AiPanel panel = new AiPanel();
+        panel.setClientForTesting(new ModelListingLlmClient(List.of("qwen3.6:35b-a3b", "llama3.3:70b")));
+        panel.open();
+        type(panel, "/model qw");
+
+        // The first TAB only starts the background fetch of the model list; once it has arrived TAB completes.
+        tab(panel);
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> {
+            tab(panel);
+            assertEquals("/model qwen3.6:35b-a3b ", panel.inputBufferForTesting());
+        });
+    }
+
+    @Test
+    void tabCyclesModelsSharingAPrefixAndHonoursAliases() {
+        AiPanel panel = new AiPanel();
+        panel.setClientForTesting(new ModelListingLlmClient(List.of("qwen2.5:14b", "qwen2.5:32b", "hermes3:8b")));
+        panel.open();
+        type(panel, "/m q");
+
+        tab(panel);
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> {
+            tab(panel);
+            assertEquals("/m qwen2.5:", panel.inputBufferForTesting());
+        });
+
+        // No further common prefix, so TAB cycles through the matches and wraps around.
+        tab(panel);
+        assertEquals("/m qwen2.5:14b", panel.inputBufferForTesting());
+        tab(panel);
+        assertEquals("/m qwen2.5:32b", panel.inputBufferForTesting());
+        tab(panel);
+        assertEquals("/m qwen2.5:14b", panel.inputBufferForTesting());
+    }
+
+    @Test
+    void tabCompletesToolModeArgument() {
+        AiPanel panel = new AiPanel();
+        panel.open();
+        type(panel, "/tools c");
+
+        tab(panel);
+
+        assertEquals("/tools core ", panel.inputBufferForTesting());
+    }
+
+    @Test
+    void tabDoesNotCompleteArgumentsOfOtherCommands() {
+        AiPanel panel = new AiPanel();
+        panel.open();
+        type(panel, "/run --exam");
+
+        tab(panel);
+
+        assertEquals("/run --exam", panel.inputBufferForTesting());
+    }
+
+    // ---- stuck tool loops ----
+
+    @Test
+    void repeatedIdenticalToolCallsEndTheTurnWithAnExplanation() throws Exception {
+        AiPanel panel = new AiPanel();
+        panel.setToolRegistryForTesting(new TuiToolRegistry(null));
+        LoopingLlmClient client = new LoopingLlmClient();
+        panel.setClientForTesting(client);
+        panel.open();
+        type(panel, "send a message to the mqtt topic");
+        panel.handleKeyEvent(KeyEvent.ofKey(KeyCode.ENTER, KeyModifiers.NONE));
+        await().atMost(10, TimeUnit.SECONDS).until(() -> !panel.isAgentThreadRunningForTesting());
+
+        AiPanel.ConversationEntry last = panel.conversationForTesting().get(panel.conversationForTesting().size() - 1);
+        assertEquals(AiRole.ERROR, last.role());
+        assertTrue(last.text().contains("Reached maximum iterations"), last.text());
+        assertTrue(last.text().contains("tui_send_message"), last.text());
+        assertTrue(last.text().contains("AI Log"), last.text());
+        // after the third identical call the tool is no longer executed; the model is told to stop instead
+        assertTrue(client.sawStopNote, "the model must be told to stop repeating the call");
+        assertEquals(AiPanel.MAX_IDENTICAL_TOOL_CALLS, client.executedResults,
+                "the tool must not run again once the repeat limit is reached");
+    }
+
+    /** Always asks for the same tool call, like a model stuck on a failing send. */
+    private static final class LoopingLlmClient extends LlmClient {
+
+        volatile boolean sawStopNote;
+        volatile int executedResults;
+
+        LoopingLlmClient() {
+            withModel("test-model");
+            withApiType(ApiType.openai);
+        }
+
+        @Override
+        public boolean detectEndpoint() {
+            return true;
+        }
+
+        @Override
+        public ChatResponse chatWithTools(String systemPrompt, List<Message> messages, List<ToolDef> tools) {
+            Message lastMessage = messages.get(messages.size() - 1);
+            if (lastMessage.toolResults() != null) {
+                for (ToolResult result : lastMessage.toolResults()) {
+                    if (result.content().contains("Stop calling tools now")) {
+                        sawStopNote = true;
+                    } else {
+                        executedResults++;
+                    }
+                }
+            }
+            JsonObject args = new JsonObject();
+            args.put("endpoint", "direct:mqtt");
+            args.put("body", "25");
+            return new ChatResponse(
+                    null, List.of(new ToolCall("call-1", "tui_send_message", args)), "tool_use", false,
+                    TokenUsage.EMPTY);
+        }
+    }
+
+    // ---- /context and /retry ----
+
+    @Test
+    void contextDescribesProviderToolsPrefixAndHistory() {
+        AiPanel panel = new AiPanel();
+        panel.setToolRegistryForTesting(new TuiToolRegistry(null));
+        RecordingLlmClient client = new RecordingLlmClient("ok");
+        client.withApiType(LlmClient.ApiType.ollama);
+        panel.setClientForTesting(client);
+
+        String context = panel.describeContext();
+
+        assertTrue(context.contains("Provider: ollama"), context);
+        assertTrue(context.contains("(local)"), context);
+        assertTrue(context.contains("Tools: core ("), context);
+        assertTrue(context.contains("Static prefix: ~"), context);
+        assertTrue(context.contains("History: 0 turn(s)"), context);
+    }
+
+    @Test
+    void retryResendsTheLastQuestionFromACleanTurn() throws Exception {
+        AiPanel panel = new AiPanel();
+        RecordingLlmClient client = new RecordingLlmClient("first answer");
+        panel.setClientForTesting(client);
+        panel.open();
+        type(panel, "what routes are running?");
+        panel.handleKeyEvent(KeyEvent.ofKey(KeyCode.ENTER, KeyModifiers.NONE));
+        assertTrue(client.awaitAnswer(5, TimeUnit.SECONDS));
+        await().atMost(5, TimeUnit.SECONDS).until(() -> !panel.isAgentThreadRunningForTesting());
+        int messagesAfterFirst = panel.messageCountForTesting();
+
+        assertTrue(panel.retryLastQuestion());
+        await().atMost(5, TimeUnit.SECONDS).until(() -> !panel.isAgentThreadRunningForTesting());
+
+        assertEquals("what routes are running?", client.lastQuestion());
+        // the retried turn replaced the earlier one in the model history instead of stacking on top of it
+        assertEquals(messagesAfterFirst, panel.messageCountForTesting());
+        assertEquals(2, panel.conversationForTesting().stream().filter(e -> e.role() == AiRole.USER).count());
+    }
+
+    @Test
+    void usageSummaryReportsTotalsPerModelAndLastRequest() {
+        AiPanel panel = new AiPanel();
+        panel.setClientForTesting(new RecordingLlmClient("ok"));
+        assertTrue(panel.usageSummary().startsWith("No AI usage yet"));
+
+        panel.recordUsageForTesting(new AiPanel.AiUsageEntry(
+                "qwen3.6:35b-a3b", "ollama", 3000, 100, 3100, 5000, "end_turn", Instant.now()));
+        panel.recordUsageForTesting(new AiPanel.AiUsageEntry(
+                "qwen3.6:35b-a3b", "ollama", 3200, 200, 3400, 2000, "end_turn", Instant.now()));
+
+        String summary = panel.usageSummary();
+
+        assertTrue(summary.startsWith("**AI usage:** 2 request(s)"), summary);
+        assertTrue(summary.contains("- **Tokens:** 6.5k (in 6.2k, out 300)"), summary);
+        assertTrue(summary.contains("- **Avg latency:** 3.5s"), summary);
+        assertTrue(summary.contains("| [tui] qwen3.6:35b-a3b (ollama) | 2 | 6.2k | 300 | 6.5k | 3.5s |"), summary);
+        assertTrue(summary.contains("- **Last request:** 3.4k tokens in 2.0s"), summary);
+    }
+
+    @Test
+    void tokensPerQuestionChartGroupsRoundTripsByQuestionNotByPause() {
+        AiPanel panel = new AiPanel();
+        panel.setClientForTesting(new RecordingLlmClient("ok"));
+        panel.open();
+        Instant now = Instant.now();
+        // two round trips for question 1 (tool call, then answer) and one for a follow-up typed seconds later
+        panel.recordUsageForTesting(usage(3000, now, 1));
+        panel.recordUsageForTesting(usage(3500, now.plusSeconds(4), 1));
+        panel.recordUsageForTesting(usage(4000, now.plusSeconds(10), 2));
+        panel.toggleStatsViewForTesting();
+
+        Rect area = new Rect(0, 0, 100, 24);
+        Buffer buffer = Buffer.empty(area);
+        panel.render(Frame.forTesting(buffer), area);
+
+        assertTrue(TuiTestHelper.bufferToString(buffer).contains("Tokens per question:"),
+                "two questions asked within seconds of each other must still give two bars");
+    }
+
+    @Test
+    void tokensPerQuestionChartIsHiddenForASingleQuestion() {
+        AiPanel panel = new AiPanel();
+        panel.setClientForTesting(new RecordingLlmClient("ok"));
+        panel.open();
+        Instant now = Instant.now();
+        // one question whose round trips were spread over more than the old 30s pause threshold
+        panel.recordUsageForTesting(usage(3000, now, 1));
+        panel.recordUsageForTesting(usage(3500, now.plusSeconds(45), 1));
+        panel.toggleStatsViewForTesting();
+
+        Rect area = new Rect(0, 0, 100, 24);
+        Buffer buffer = Buffer.empty(area);
+        panel.render(Frame.forTesting(buffer), area);
+
+        assertFalse(TuiTestHelper.bufferToString(buffer).contains("Tokens per question:"));
+    }
+
+    private static AiPanel.AiUsageEntry usage(int tokens, Instant at, int question) {
+        return new AiPanel.AiUsageEntry(
+                "qwen3.6:35b-a3b", "ollama", tokens - 100, 100, tokens, 1000, "end_turn", at,
+                AiPanel.AiUsageSource.TUI, null, question);
+    }
+
+    @Test
+    void usageResetSlashCommandClearsTheStatistics() {
+        AiPanel panel = new AiPanel();
+        panel.setClientForTesting(new RecordingLlmClient("ok"));
+        panel.open();
+        panel.recordUsageForTesting(usage(3000, Instant.now(), 1));
+        assertTrue(panel.usageSummary().startsWith("**AI usage:** 1 request(s)"), panel.usageSummary());
+
+        panel.executeSlashCommandForTesting("/usage reset");
+
+        assertTrue(panel.usageSummary().startsWith("No AI usage yet"), panel.usageSummary());
+        assertTrue(panel.conversationForTesting().stream()
+                .anyMatch(e -> e.role() == AiRole.SYSTEM && e.text().contains("AI usage statistics reset")));
+    }
+
+    @Test
+    void responseLogShowsPrefillAndGenerationTimeForOllamaAndCachedTokensForHostedApis() {
+        assertEquals("", AiPanel.describeCacheSignal(new LlmClient.TokenUsage(100, 10, 110)));
+        assertEquals("", AiPanel.describeCacheSignal(null));
+        // Ollama: a cached prompt is a near-zero prefill; the token count alone cannot tell
+        assertEquals(", prefill 0.2s, gen 2.6s",
+                AiPanel.describeCacheSignal(new LlmClient.TokenUsage(4500, 130, 4630, 0, 170, 2600)));
+        // hosted API: cache hits are reported as tokens
+        assertEquals(", cached 3.2k",
+                AiPanel.describeCacheSignal(new LlmClient.TokenUsage(4500, 130, 4630, 3200, 0, 0)));
+        // several round trips add up
+        LlmClient.TokenUsage sum = new LlmClient.TokenUsage(4500, 30, 4530, 0, 170, 600)
+                .add(new LlmClient.TokenUsage(4800, 130, 4930, 0, 210, 2600));
+        assertEquals(", prefill 0.4s, gen 3.2s", AiPanel.describeCacheSignal(sum));
+    }
+
+    @Test
+    void retryWithoutAQuestionIsRefused() {
+        AiPanel panel = new AiPanel();
+        panel.setClientForTesting(new RecordingLlmClient("ok"));
+
+        assertFalse(panel.retryLastQuestion());
+    }
+
+    // ---- tool set and system prompt tests ----
+
+    @Test
+    void localProviderGetsCoreToolsAndHostedProviderGetsAll() {
+        AiPanel panel = new AiPanel();
+        panel.setToolRegistryForTesting(new TuiToolRegistry(null));
+        RecordingLlmClient client = new RecordingLlmClient("ok");
+        panel.setClientForTesting(client);
+
+        // auto mode: a hosted provider gets every tool
+        assertEquals(new TuiToolRegistry(null).getToolDefinitions().size(), panel.toolDefinitionsForTesting().size());
+        assertTrue(panel.systemPromptForTesting().contains("tui_draw_shape"));
+
+        // auto mode: a local provider only gets the core set, and the prompt no longer suggests drawing tools
+        client.withApiType(LlmClient.ApiType.ollama);
+        assertEquals(TuiToolRegistry.CORE_TOOLS.size(), panel.toolDefinitionsForTesting().size());
+        assertTrue(panel.toolDefinitionsForTesting().stream()
+                .allMatch(def -> TuiToolRegistry.CORE_TOOLS.contains(def.name())));
+        assertFalse(panel.systemPromptForTesting().contains("tui_draw_shape"));
+        assertTrue(panel.describeToolModeForTesting()
+                .startsWith("core (" + TuiToolRegistry.CORE_TOOLS.size() + " of "));
+    }
+
+    @Test
+    void explicitToolModeOverridesProviderDetection() {
+        AiPanel panel = new AiPanel();
+        panel.setToolRegistryForTesting(new TuiToolRegistry(null));
+        RecordingLlmClient client = new RecordingLlmClient("ok");
+        client.withApiType(LlmClient.ApiType.ollama);
+        panel.setClientForTesting(client);
+
+        panel.setToolModeForTesting("full");
+        assertEquals(new TuiToolRegistry(null).getToolDefinitions().size(), panel.toolDefinitionsForTesting().size());
+
+        panel.setToolModeForTesting("core");
+        client.withApiType(LlmClient.ApiType.openai);
+        assertEquals(TuiToolRegistry.CORE_TOOLS.size(), panel.toolDefinitionsForTesting().size());
+    }
+
+    @Test
+    void systemPromptIsStableAndDoesNotRepeatTheToolList() {
+        AiPanel panel = new AiPanel();
+        panel.setToolRegistryForTesting(new TuiToolRegistry(null));
+        panel.setClientForTesting(new RecordingLlmClient("ok"));
+
+        String prompt = panel.systemPromptForTesting();
+
+        // the tool definitions already describe every tool, so the prompt must not list them again
+        assertFalse(prompt.contains("- tui_get_table:"));
+        assertFalse(prompt.contains("The user is monitoring"));
+        assertEquals(prompt, panel.systemPromptForTesting());
+    }
+
+    @Test
+    void normalizeToolModeAcceptsKnownValuesOnly() {
+        assertEquals("auto", AiPanel.normalizeToolMode(null));
+        assertEquals("auto", AiPanel.normalizeToolMode("  "));
+        assertEquals("core", AiPanel.normalizeToolMode("Core"));
+        assertEquals("full", AiPanel.normalizeToolMode("FULL"));
+        assertNull(AiPanel.normalizeToolMode("bogus"));
+    }
+
+    // ---- paste tests ----
+
+    @Test
+    void pasteInsertsTextAtCursor() {
+        AiPanel panel = new AiPanel();
+        panel.open();
+        type(panel, "/model ");
+
+        panel.handlePaste("qwen3.6:35b-a3b");
+
+        assertEquals("/model qwen3.6:35b-a3b", panel.inputBufferForTesting());
+    }
+
+    @Test
+    void pasteInsertsInTheMiddleOfTheBuffer() {
+        AiPanel panel = new AiPanel();
+        panel.open();
+        type(panel, "ac");
+        panel.handleKeyEvent(KeyEvent.ofKey(KeyCode.LEFT, KeyModifiers.NONE));
+
+        panel.handlePaste("b");
+        type(panel, "d");
+
+        // The cursor advances past the pasted text so typing continues right after it.
+        assertEquals("abdc", panel.inputBufferForTesting());
+    }
+
+    @Test
+    void pasteCollapsesLineBreaksToSpaces() {
+        AiPanel panel = new AiPanel();
+        panel.open();
+
+        panel.handlePaste("why is\nthe route\r\nstopped?");
+
+        // A multi-line paste becomes a single prompt instead of submitting on the first newline.
+        assertEquals("why is the route stopped?", panel.inputBufferForTesting());
+    }
+
+    @Test
+    void pasteIsIgnoredWhileClosed() {
+        AiPanel panel = new AiPanel();
+
+        panel.handlePaste("ignored");
+
+        assertEquals("", panel.inputBufferForTesting());
     }
 
     private static void type(AiPanel panel, String text) {
@@ -805,6 +1219,53 @@ class AiPanelTest {
     }
 
     static final class FakeSlashContext implements AiSlashCommandContext {
+
+        @Override
+        public String describeToolMode() {
+            return "full (46 of 46 tools), mode auto";
+        }
+
+        @Override
+        public boolean switchToolMode(String mode) {
+            return true;
+        }
+
+        @Override
+        public String describeContext() {
+            return "";
+        }
+
+        @Override
+        public String compactHistoryNow() {
+            return "";
+        }
+
+        @Override
+        public boolean retryLastQuestion() {
+            return false;
+        }
+
+        @Override
+        public String usageSummary() {
+            return "";
+        }
+
+        @Override
+        public void resetUsage() {
+        }
+
+        @Override
+        public void copyLastResponse() {
+        }
+
+        @Override
+        public void exportConversation() {
+        }
+
+        @Override
+        public String systemPrompt() {
+            return "";
+        }
 
         boolean exitRequested;
         boolean cancelRequested;

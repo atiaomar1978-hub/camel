@@ -63,7 +63,7 @@ PR comment: /component-test kafka http
 
 ### `main-build.yml` — Main branch build
 
-- **Trigger**: `push` to main, camel-4.14.x, camel-4.18.x
+- **Trigger**: `push` to main, camel-4.18.x, camel-4.22.x
 - **Steps**: Same as PR build but without comment posting
 
 ### `sonar-build.yml` + `sonar-scan.yml` — SonarCloud PR analysis
@@ -103,6 +103,9 @@ The script also:
 - Applies an exclusion list for generated/meta modules
 - Checks for excluded modules with associated integration tests (via `manual-it-mapping.txt`) and advises contributors to run them manually
 - Generates a unified PR comment with all test information
+- Parses Maven reactor output from `incremental-test.log` and reports **per-module elapsed time**, total reactor duration, and the top 20 slowest modules (see `reactor_timing.sh`)
+
+Unit tests for reactor timing parsing live in `reactor_timing_test.sh`.
 
 ### `install-mvnd`
 

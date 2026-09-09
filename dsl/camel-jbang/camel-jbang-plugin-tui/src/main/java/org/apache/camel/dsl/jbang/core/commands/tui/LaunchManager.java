@@ -21,8 +21,10 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
@@ -39,6 +41,7 @@ class LaunchManager {
 
     private final Supplier<List<InfraInfo>> infraServices;
     private final List<PendingLaunch> pendingLaunches = new ArrayList<>();
+    private final Map<Long, Path> activeTempPoms = new HashMap<>();
     private DeferredLaunch deferredLaunch;
     private volatile String pendingAutoSelect;
     private BiConsumer<String, Boolean> notificationCallback;
@@ -123,21 +126,29 @@ class LaunchManager {
                 .anyMatch(i -> i.alive && "jaeger".equals(i.alias));
     }
 
+    /**
+     * Starts an infra service in the background via {@code camel infra run <alias> --background}. The launch is
+     * monitored like any other, so a failure surfaces through the failure log callback.
+     */
+    void startInfra(String alias) throws IOException {
+        List<String> cmd = new ArrayList<>(LauncherHelper.getCamelCommand());
+        cmd.add("infra");
+        cmd.add("run");
+        cmd.add(alias);
+        cmd.add("--background");
+        Path outputFile = createSecureTempFile("camel-infra-", ".log");
+        outputFile.toFile().deleteOnExit();
+        ProcessBuilder pb = new ProcessBuilder(cmd);
+        pb.redirectErrorStream(true);
+        pb.redirectOutput(outputFile.toFile());
+        Process process = pb.start();
+        pendingLaunches.add(new PendingLaunch(alias, process, outputFile, System.currentTimeMillis()));
+    }
+
     void startMissingInfraAndDefer(List<String> missingInfra, String displayName, Runnable launchAction) {
         for (String alias : missingInfra) {
             try {
-                List<String> cmd = new ArrayList<>(LauncherHelper.getCamelCommand());
-                cmd.add("infra");
-                cmd.add("run");
-                cmd.add(alias);
-                cmd.add("--background");
-                Path outputFile = createSecureTempFile("camel-infra-", ".log");
-                outputFile.toFile().deleteOnExit();
-                ProcessBuilder pb = new ProcessBuilder(cmd);
-                pb.redirectErrorStream(true);
-                pb.redirectOutput(outputFile.toFile());
-                Process process = pb.start();
-                pendingLaunches.add(new PendingLaunch(alias, process, outputFile, System.currentTimeMillis()));
+                startInfra(alias);
             } catch (Exception e) {
                 notify("Failed to start infra: " + alias + " - " + e.getMessage(), true);
                 return;
@@ -204,8 +215,9 @@ class LaunchManager {
             // Translate Camel JBang args to Maven-compatible args
             cmd.addAll(translateArgsForMaven(extraArgs, projectType));
             // Inject camel-cli-connector if not already in the project
+            Path tempPom = null;
             if ("spring-boot".equals(projectType)) {
-                injectCliConnectorIfMissing(dir, cmd);
+                tempPom = injectCliConnectorIfMissing(dir, cmd);
             }
             Path outputFile = createSecureTempFile("camel-maven-", ".log");
             outputFile.toFile().deleteOnExit();
@@ -214,22 +226,25 @@ class LaunchManager {
             pb.redirectErrorStream(true);
             pb.redirectOutput(outputFile.toFile());
             Process process = pb.start();
-            addPendingLaunch(displayName, process, outputFile);
+            pendingLaunches.add(new PendingLaunch(displayName, process, outputFile, System.currentTimeMillis(), tempPom));
+            if (pendingAutoSelect == null) {
+                pendingAutoSelect = displayName;
+            }
             notify("Starting: " + displayName + " (mvn " + cmd.get(1) + ")", false);
         } catch (Exception e) {
             notify("Failed to start Maven project: " + e.getMessage(), true);
         }
     }
 
-    private void injectCliConnectorIfMissing(String dir, List<String> cmd) {
+    private Path injectCliConnectorIfMissing(String dir, List<String> cmd) {
         try {
             Path pomFile = Path.of(dir, "pom.xml");
             if (!Files.isRegularFile(pomFile)) {
-                return;
+                return null;
             }
             String pomContent = Files.readString(pomFile);
             if (pomContent.contains("camel-cli-connector")) {
-                return;
+                return null;
             }
             // Add cli-connector-starter dependency (version managed by BOM)
             String dep = "\n        <dependency>\n"
@@ -239,17 +254,18 @@ class LaunchManager {
             // Find the project-level </dependencies> (not inside dependencyManagement or plugins)
             int insertIdx = findProjectDependenciesEnd(pomContent);
             if (insertIdx < 0) {
-                return;
+                return null;
             }
             String modified = pomContent.substring(0, insertIdx) + dep + "\n    " + pomContent.substring(insertIdx);
             // Write temp pom in the project dir so Maven can find sources
             Path tempPom = Path.of(dir, ".camel-tui-pom.xml");
-            tempPom.toFile().deleteOnExit();
             Files.writeString(tempPom, modified);
             cmd.add("-f");
             cmd.add(tempPom.getFileName().toString());
+            return tempPom;
         } catch (Exception e) {
             // best effort — don't fail the launch
+            return null;
         }
     }
 
@@ -418,10 +434,36 @@ class LaunchManager {
                         failureLogCallback.accept(pl.name(), pl.outputFile());
                     }
                 }
+                cleanupTempPom(pl);
                 it.remove();
             } else if (now - pl.startTime() > 8000) {
                 notify("Started: " + pl.name(), false);
+                // keep temp pom reference for cleanup when process stops
+                if (pl.tempPom() != null) {
+                    activeTempPoms.put(pl.process().pid(), pl.tempPom());
+                }
                 it.remove();
+            }
+        }
+    }
+
+    void cleanupTempPom(long pid) {
+        Path tempPom = activeTempPoms.remove(pid);
+        if (tempPom != null) {
+            try {
+                Files.deleteIfExists(tempPom);
+            } catch (Exception e) {
+                // best effort
+            }
+        }
+    }
+
+    private static void cleanupTempPom(PendingLaunch pl) {
+        if (pl.tempPom() != null) {
+            try {
+                Files.deleteIfExists(pl.tempPom());
+            } catch (Exception e) {
+                // best effort
             }
         }
     }
@@ -432,7 +474,10 @@ class LaunchManager {
         }
     }
 
-    private record PendingLaunch(String name, Process process, Path outputFile, long startTime) {
+    private record PendingLaunch(String name, Process process, Path outputFile, long startTime, Path tempPom) {
+        PendingLaunch(String name, Process process, Path outputFile, long startTime) {
+            this(name, process, outputFile, startTime, null);
+        }
     }
 
     private record DeferredLaunch(
