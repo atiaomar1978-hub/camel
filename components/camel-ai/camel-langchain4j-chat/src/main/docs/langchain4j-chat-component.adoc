@@ -49,6 +49,50 @@ include::partial$component-endpoint-headers.adoc[]
 
 == Usage
 
+=== Configuring the model by provider
+
+The chat model can be declared by its provider and the options every provider has, without a bean of the
+provider's model class (since Camel 4.23). In `application.properties`, for every endpoint of the component:
+
+[source,properties]
+----
+camel.component.langchain4j-chat.provider = ollama
+camel.component.langchain4j-chat.model-name = qwen2.5
+camel.component.langchain4j-chat.base-url = http://localhost:11434
+----
+
+Or on the endpoint, where `model.` prefixes a provider-specific option of the model's builder:
+
+[source,yaml]
+----
+- route:
+    from:
+      uri: direct:start
+      steps:
+        - to:
+            uri: langchain4j-chat:assistant
+            parameters:
+              provider: openai
+              apiKey: "{{openai.api.key}}"
+              modelName: gpt-4o-mini
+              timeout: 30s
+              model.maxTokens: 1024
+----
+
+The provider is one of `ollama`, `openai`, `anthropic`, `azure-openai`, `mistral`, `gemini`, `vertex-ai`, `github`,
+`hugging-face`, `bedrock`; a provider not in the list is set as `customProvider`, the fully qualified class name of
+its LangChain4j model class (any class with a `builder()`, such as `dev.langchain4j.model.jlama.JlamaChatModel`).
+The LangChain4j module of the provider (`dev.langchain4j:langchain4j-ollama`, `dev.langchain4j:langchain4j-open-ai`,
+...) must be on the classpath; Camel JBang downloads it for the listed providers. Ollama, LocalAI, vLLM, LM Studio and
+the other servers that speak the OpenAI API can also be used through `provider: openai` with their `baseUrl`, which
+needs no module of their own. The common options are `modelName`, `baseUrl`, `apiKey`, `temperature`
+and `timeout`, set under the name the provider's builder uses for them (`apiKey` is the access token of Hugging Face,
+`modelName` the deployment name of Azure OpenAI); an option the provider does not have (an `apiKey` for Ollama), or a
+`model.` property its builder does not have, is an error naming what the builder accepts.
+
+Endpoints with the same provider options share one model instance. The provider is ignored when a model bean is
+configured (`chatModel`).
+
 === Using a specific Chat Model
 
 The Camel LangChain4j chat component provides an abstraction for interacting with various types of Large Language Models (LLMs) supported by https://github.com/langchain4j/langchain4j[LangChain4j].
@@ -117,11 +161,11 @@ YAML::
 - route:
     from:
       uri: "direct:chat"
-    steps:
-      - to:
-          uri: "langchain4j-chat:test"
-          parameters:
-            chatModel: "#chatLanguageModel"
+      steps:
+        - to:
+            uri: "langchain4j-chat:test"
+            parameters:
+              chatModel: "#chatLanguageModel"
 ----
 
 XML::
@@ -200,11 +244,11 @@ YAML::
 - route:
     from:
       uri: "direct:chat"
-    steps:
-      - to:
-          uri: "langchain4j-chat:test"
-          parameters:
-            chatModel: "#myChatModel"
+      steps:
+        - to:
+            uri: "langchain4j-chat:test"
+            parameters:
+              chatModel: "#myChatModel"
 ----
 ====
 
@@ -324,4 +368,91 @@ Content augmentedContent = new Content("data test");
 List<Content> contents = List.of(augmentedContent);
 
 String response = template.requestBodyAndHeader("direct:send-multiple", messages, LangChain4jChatHeaders.AUGMENTED_DATA, contents, String.class);
+----
+
+== Error Handling
+
+The component does not wrap what the chat model throws. LangChain4j maps provider HTTP errors onto its own hierarchy in `dev.langchain4j.exception`, and that exception reaches the exchange unchanged, so `onException` can match it by type.
+
+The hierarchy already splits along the axis that matters for retries:
+
+[cols="2,3"]
+|===
+| Exception | Meaning
+
+| `RetriableException` | Base type for failures worth another attempt
+| `RateLimitException` | Provider rejected the call with a rate limit
+| `InternalServerException` | Provider-side failure
+| `TimeoutException` | The call did not complete within the model's timeout
+| `NonRetriableException` | Base type for failures that will fail the same way again
+| `InvalidRequestException` | Malformed request, including context-length errors
+| `ContentFilteredException` | Content rejected by the provider's moderation, a subclass of `InvalidRequestException`
+| `AuthenticationException` | Bad or missing API key
+| `ModelNotFoundException` | Unknown model name
+| `UnresolvedModelServerException` | The model server address could not be resolved
+|===
+
+Because the two base classes carry the decision, a route rarely has to enumerate the concrete types:
+
+[source, java]
+----
+onException(RetriableException.class)
+    .maximumRedeliveries(3)
+    .redeliveryDelay(2000)
+    .backOffMultiplier(2)
+    .useExponentialBackOff();
+
+onException(NonRetriableException.class)
+    .maximumRedeliveries(0)
+    .handled(true)
+    .to("direct:rejected");
+
+from("direct:chat")
+    .to("langchain4j-chat:my-chat");
+----
+
+=== Structured error exchange properties
+
+When a LangChain4j chat call fails, Camel sets structured metadata on the exchange **before** the model exception propagates. This works even when GenAI observability is disabled.
+
+[cols="2,3"]
+|===
+| Exchange property | Meaning
+
+| `CamelAiErrorCategory` | Coarse category derived from the LangChain4j exception: `RATE_LIMIT`, `SERVER_ERROR`, `VALIDATION`, `AUTH`, or `UNKNOWN`
+| `CamelAiRetryAfterMillis` | Not populated for LangChain4j providers (OpenAI-only today)
+|===
+
+Category-based handling complements matching on `RetriableException` / `NonRetriableException` above:
+
+[source, java]
+----
+onException(Exception.class)
+    .process(exchange -> {
+        String category = exchange.getProperty("CamelAiErrorCategory", String.class);
+        if ("VALIDATION".equals(category)) {
+            exchange.getIn().setHeader("Rejected", true);
+        }
+    })
+    .handled(true)
+    .to("direct:rejected");
+----
+
+The same properties are set by xref:langchain4j-agent-component.adoc[LangChain4j Agent] and xref:langchain4j-embeddings-component.adoc[LangChain4j Embeddings] on their failure paths. See xref:ai-llm-integration-guide.adoc#_structured_error_exchange_properties[AI LLM integration guide] for a cross-component overview.
+
+IMPORTANT: The mapping is performed by the LangChain4j model implementation, not by Camel. `OpenAiChatModel` and `OllamaChatModel` route their calls through LangChain4j's exception mapper, but a model that does not will propagate the raw exception of its own HTTP client instead. Verify what your provider throws before relying on the type.
+
+=== Model retries vs Camel redelivery
+
+Most LangChain4j builders expose `maxRetries`, defaulting to `2`, which means one call already makes up to three attempts before any exception reaches Camel. Adding `maximumRedeliveries(3)` on top of that multiplies out to twelve attempts against a provider that is already rate limiting you.
+
+Configure one layer. Either leave the model retries alone and skip Camel redelivery, or build the model with `maxRetries(0)` and drive retries from `onException` so they are visible to the Camel error handler:
+
+[source, java]
+----
+ChatModel model = OpenAiChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-4o-mini")
+        .maxRetries(0)
+        .build();
 ----

@@ -19,6 +19,7 @@ package org.apache.camel.dsl.yaml
 import org.apache.camel.dsl.yaml.support.YamlTestSupport
 import org.apache.camel.dsl.yaml.support.model.MyBean
 import org.apache.camel.dsl.yaml.support.model.MyBeanBuilder
+import org.apache.camel.dsl.yaml.support.model.MyBuiltBean
 import org.apache.camel.dsl.yaml.support.model.MyCtrBean
 import org.apache.camel.dsl.yaml.support.model.MyDestroyBean
 import org.apache.camel.dsl.yaml.support.model.MyFacBean
@@ -230,6 +231,22 @@ class BeansTest extends YamlTestSupport {
         }
     }
 
+    def "beans with script without type"() {
+        when:
+        loadRoutes """
+                - beans:
+                  - name: myBean
+                    scriptLanguage: groovy
+                    script: "var b = new ${MyBean.class.name}(); b.field1 = 'script1'; b.field2 = 'script2'; return b"
+            """
+
+        then:
+        with(context.registry.lookupByName('myBean'), MyBean) {
+            it.field1 == 'script1'
+            it.field2 == 'script2'
+        }
+    }
+
     def "beans with script property placeholder default"() {
         when:
         context.getPropertiesComponent().addInitialProperty("cheese", "gauda")
@@ -307,6 +324,105 @@ class BeansTest extends YamlTestSupport {
             it.field1 == 'builder1'
             it.field2 == 'builder2'
         }
+    }
+
+    // CAMEL-24820: a type with no public constructor but a builder() needs no builderClass and builderMethod
+    def "beans with inferred builder"() {
+        when:
+        loadRoutes """
+                - beans:
+                  - name: chatModel
+                    type: ${MyBuiltBean.class.name}
+                    properties:
+                      baseUrl: http://localhost:11434
+                      modelName: qwen2.5
+                      timeout: 2m
+                      label: support
+            """
+
+        then:
+        with(context.registry.lookupByName('chatModel'), MyBuiltBean) {
+            it.baseUrl == 'http://localhost:11434'
+            it.modelName == 'qwen2.5'
+            it.timeout == java.time.Duration.ofMinutes(2)
+            // label is not a builder property but has a setter on the bean
+            it.label == 'support'
+        }
+    }
+
+    def "beans with inferred builder and unknown property fails with the property name"() {
+        when:
+        loadRoutes """
+                - beans:
+                  - name: chatModel
+                    type: ${MyBuiltBean.class.name}
+                    properties:
+                      model: qwen2.5
+            """
+
+        then:
+        def e = thrown(Exception)
+        def msg = messages(e)
+        msg.contains('model=qwen2.5')
+        // (a Groovy class also has a metaClass property, which the runtime lists as any other setter)
+        msg.contains("The bean is created through its builder ${MyBuiltBean.Builder.class.name}, which accepts: baseUrl, ")
+        msg.contains("modelName, timeout; the created bean accepts: label")
+    }
+
+    // CAMEL-24709: a class that was not found names the built-in bean that was likely meant, from the bean metadata on the classpath
+    def "beans class not found in wrong package says did you mean"() {
+        when:
+        loadRoutes """
+                - beans:
+                  - name: myAgg
+                    type: com.foo.UseLatestAggregationStrategy
+            """
+
+        then:
+        def e = thrown(Exception)
+        def msg = messages(e)
+        msg.contains('Error creating bean: myAgg of type: #class:com.foo.UseLatestAggregationStrategy')
+        msg.contains('class com.foo.UseLatestAggregationStrategy was not found')
+        msg.contains('did you mean org.apache.camel.processor.aggregate.UseLatestAggregationStrategy (org.apache.camel.AggregationStrategy)?')
+        msg.contains('write: type: org.apache.camel.processor.aggregate.UseLatestAggregationStrategy')
+    }
+
+    def "beans class not found without package says did you mean"() {
+        when:
+        loadRoutes """
+                - beans:
+                  - name: myRepo
+                    type: MemoryAggregationRepository
+            """
+
+        then:
+        def e = thrown(Exception)
+        def msg = messages(e)
+        msg.contains('class MemoryAggregationRepository was not found')
+        msg.contains('did you mean org.apache.camel.processor.aggregate.MemoryAggregationRepository (org.apache.camel.spi.AggregationRepository)?')
+    }
+
+    def "beans class not found that is not a built-in bean keeps the generic hint"() {
+        when:
+        loadRoutes """
+                - beans:
+                  - name: myBean
+                    type: com.foo.MyBean
+            """
+
+        then:
+        def e = thrown(Exception)
+        def msg = messages(e)
+        msg.contains('class com.foo.MyBean was not found (check the package name; a class from another library needs its dependency added)')
+        !msg.contains('did you mean')
+    }
+
+    private static String messages(Throwable e) {
+        def sb = new StringBuilder()
+        for (Throwable t = e; t != null; t = t.cause) {
+            sb.append(t.message).append('\n')
+        }
+        return sb.toString()
     }
 
 }

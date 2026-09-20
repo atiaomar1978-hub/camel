@@ -21,8 +21,10 @@ import java.util.List;
 /**
  * Single source of truth for emoji and symbolic icons used across the Camel TUI.
  * <p/>
- * Tab/menu icons use plain 2-column-wide emoji without VS16 variation selectors (see CAMEL-23818). Doctor and legacy
- * status glyphs may still use mixed-width symbols until migrated.
+ * Tab/menu icons are 2-column emoji. A text-default glyph such as the keyboard or the wastebasket must carry the VS16
+ * variation selector (U+FE0F): TamboUI counts the bare glyph as 2 columns while terminals draw it in 1, and with VS16
+ * both TamboUI 0.5.0 (tamboui/tamboui#388) and the xterm.js grapheme width tables used by {@code --web} agree on 2.
+ * Doctor and legacy status glyphs may still use mixed-width symbols until migrated.
  */
 final class TuiIcons {
 
@@ -30,6 +32,7 @@ final class TuiIcons {
     static final String CAMEL = "🐪";
     static final String SPRING_BOOT = "🍃";
     static final String QUARKUS = "🚀";
+    static final String JBANG = "⚡";
     static final String DEV_PROFILE = "🔨";
     static final String PROD_PROFILE = "📦";
     static final String INFRA = "🔧";
@@ -43,6 +46,8 @@ final class TuiIcons {
     static final String HEALTH_WARN = "⚠";
     static final String STOPPED = "✖";
     static final String CROSS = "✗";
+    static final String GEAR = "⚙";
+    static final String CHECK = "✓";
 
     // ---- Files & folders ----
     static final String FOLDER = "📁";
@@ -51,13 +56,23 @@ final class TuiIcons {
     static final String DOCUMENT = "📄";
     static final String README = "📖";
 
+    // ---- File actions ----
+    static final String NEW_FILE = "📄";
+    static final String NEW_FOLDER = "📁";
+    // memo (📝) reads as "edit"; the letters glyph reads as changing the name
+    static final String RENAME = "🔤";
+    static final String DUPLICATE = "📑";
+    static final String DELETE = "🗑️";
+
     // ---- Actions menu ----
     static final String GO_TO = "🔍";
     static final String MESSAGE = "📩";
-    static final String KEYSTROKES = "🔤";
+    static final String KEYSTROKES = "⌨️";
     static final String SLEEP = "💤";
     static final String STOP = "🛑";
-    static final String RECORD = "🔴";
+    static final String QUIT = "🚪";
+    static final String RECORD = "⏺️";
+    static final String STOP_RECORD = "⏹️";
     static final String DOCTOR = "🩺";
     static final String RESET = "🔄";
     static final String CLEAN = "🧹";
@@ -143,6 +158,7 @@ final class TuiIcons {
     static final String TAB_MEMORY = MEMORY;
     static final String TAB_MEMORY_LEAK = "💧";
     static final String TAB_NETWORK = "🌐";
+    static final String TAB_OLLAMA = "🦙";
     static final String TAB_METRICS = "📈";
     static final String TAB_SQL_QUERY = KEY;
     static final String TAB_SQL_TRACE = "🔎";
