@@ -34,6 +34,49 @@ include::partial$component-endpoint-headers.adoc[]
 
 == Usage
 
+=== Configuring the model by provider
+
+The embedding model can be declared by its provider and the options every provider has, without a bean of the
+provider's model class (since Camel 4.23). In `application.properties`, for every endpoint of the component:
+
+[source,properties]
+----
+camel.component.langchain4j-embeddings.provider = ollama
+camel.component.langchain4j-embeddings.model-name = nomic-embed-text
+camel.component.langchain4j-embeddings.base-url = http://localhost:11434
+----
+
+Or on the endpoint, where `model.` prefixes a provider-specific option of the model's builder:
+
+[source,yaml]
+----
+- route:
+    from:
+      uri: direct:start
+      steps:
+        - to:
+            uri: langchain4j-embeddings:documents
+            parameters:
+              provider: openai
+              apiKey: "{{openai.api.key}}"
+              modelName: text-embedding-3-small
+              timeout: 30s
+----
+
+The provider is one of `ollama`, `openai`, `anthropic`, `azure-openai`, `mistral`, `gemini`, `vertex-ai`, `github`,
+`hugging-face`, `bedrock`; a provider not in the list is set as `customProvider`, the fully qualified class name of
+its LangChain4j model class (any class with a `builder()`, such as `dev.langchain4j.model.jlama.JlamaChatModel`).
+The LangChain4j module of the provider (`dev.langchain4j:langchain4j-ollama`, `dev.langchain4j:langchain4j-open-ai`,
+...) must be on the classpath; Camel JBang downloads it for the listed providers. Ollama, LocalAI, vLLM, LM Studio and
+the other servers that speak the OpenAI API can also be used through `provider: openai` with their `baseUrl`, which
+needs no module of their own. The common options are `modelName`, `baseUrl`, `apiKey`, `temperature`
+and `timeout`, set under the name the provider's builder uses for them (`apiKey` is the access token of Hugging Face,
+`modelName` the deployment name of Azure OpenAI); an option the provider does not have (an `apiKey` for Ollama), or a
+`model.` property its builder does not have, is an error naming what the builder accepts.
+
+Endpoints with the same provider options share one model instance. The provider is ignored when a model bean is
+configured (`embeddingModel`).
+
 === Using Embedding Models
 
 The Camel LangChain4j embeddings component provides support for generating embeddings using various embedding models supported by https://docs.langchain4j.dev/[LangChain4j].
@@ -95,11 +138,11 @@ YAML::
 - route:
     from:
       uri: direct:embeddings
-    steps:
-      - to:
-          uri: langchain4j-embeddings:test
-          parameters:
-            embeddingModel: "#embeddingModel"
+      steps:
+        - to:
+            uri: langchain4j-embeddings:test
+            parameters:
+              embeddingModel: "#embeddingModel"
 ----
 
 XML::
@@ -174,11 +217,11 @@ YAML::
 - route:
     from:
       uri: direct:embeddings
-    steps:
-      - to:
-          uri: langchain4j-embeddings:test
-          parameters:
-            embeddingModel: "#myEmbeddingModel"
+      steps:
+        - to:
+            uri: langchain4j-embeddings:test
+            parameters:
+              embeddingModel: "#myEmbeddingModel"
 ----
 ====
 
@@ -211,19 +254,19 @@ YAML::
 - route:
     from:
       uri: direct:store
-    steps:
-      - to:
-          uri: langchain4j-embeddings:embed
-      - setHeader:
-          name: CamelQdrantAction
-          constant: UPSERT
-      - setHeader:
-          name: CamelQdrantPointId
-          constant: 1
-      - transform:
-          dataType: "qdrant:embeddings"
-      - to:
-          uri: qdrant:myCollection
+      steps:
+        - to:
+            uri: langchain4j-embeddings:embed
+        - setHeader:
+            name: CamelQdrantAction
+            constant: UPSERT
+        - setHeader:
+            name: CamelQdrantPointId
+            constant: 1
+        - transformDataType:
+            toType: "qdrant:embeddings"
+        - to:
+            uri: qdrant:myCollection
 ----
 ====
 
@@ -253,21 +296,21 @@ YAML::
 - route:
     from:
       uri: direct:search
-    steps:
-      - to:
-          uri: langchain4j-embeddings:embed
-      - transform:
-          dataType: "qdrant:embeddings"
-      - setHeader:
-          name: CamelQdrantAction
-          constant: SIMILARITY_SEARCH
-      - setHeader:
-          name: CamelQdrantIncludePayload
-          constant: true
-      - to:
-          uri: qdrant:myCollection
-      - transform:
-          dataType: "qdrant:rag"
+      steps:
+        - to:
+            uri: langchain4j-embeddings:embed
+        - transformDataType:
+            toType: "qdrant:embeddings"
+        - setHeader:
+            name: CamelQdrantAction
+            constant: SIMILARITY_SEARCH
+        - setHeader:
+            name: CamelQdrantWithPayload
+            constant: true
+        - to:
+            uri: qdrant:myCollection
+        - transformDataType:
+            toType: "qdrant:rag"
 ----
 ====
 
@@ -295,16 +338,16 @@ YAML::
 - route:
     from:
       uri: direct:store
-    steps:
-      - to:
-          uri: langchain4j-embeddings:embed
-      - setHeader:
-          name: CamelPgVectorAction
-          constant: UPSERT
-      - transform:
-          dataType: "pgvector:embeddings"
-      - to:
-          uri: pgvector:myCollection
+      steps:
+        - to:
+            uri: langchain4j-embeddings:embed
+        - setHeader:
+            name: CamelPgVectorAction
+            constant: UPSERT
+        - transformDataType:
+            toType: "pgvector:embeddings"
+        - to:
+            uri: pgvector:myCollection
 ----
 ====
 
@@ -331,18 +374,18 @@ YAML::
 - route:
     from:
       uri: direct:search
-    steps:
-      - to:
-          uri: langchain4j-embeddings:embed
-      - transform:
-          dataType: "pgvector:embeddings"
-      - setHeader:
-          name: CamelPgVectorAction
-          constant: SIMILARITY_SEARCH
-      - to:
-          uri: pgvector:myCollection
-      - transform:
-          dataType: "pgvector:rag"
+      steps:
+        - to:
+            uri: langchain4j-embeddings:embed
+        - transformDataType:
+            toType: "pgvector:embeddings"
+        - setHeader:
+            name: CamelPgVectorAction
+            constant: SIMILARITY_SEARCH
+        - to:
+            uri: pgvector:myCollection
+        - transformDataType:
+            toType: "pgvector:rag"
 ----
 ====
 
@@ -372,25 +415,39 @@ YAML::
 - route:
     from:
       uri: direct:store
-    steps:
-      - to:
-          uri: langchain4j-embeddings:embed
-      - to:
-          uri: langchain4j-embeddingstore:myStore
-          parameters:
-            action: ADD
+      steps:
+        - to:
+            uri: langchain4j-embeddings:embed
+        - to:
+            uri: langchain4j-embeddingstore:myStore
+            parameters:
+              action: ADD
 
 - route:
     from:
       uri: direct:search
-    steps:
-      - to:
-          uri: langchain4j-embeddings:embed
-      - to:
-          uri: langchain4j-embeddingstore:myStore
-          parameters:
-            action: SEARCH
-            maxResults: 5
-            returnTextContent: true
+      steps:
+        - to:
+            uri: langchain4j-embeddings:embed
+        - to:
+            uri: langchain4j-embeddingstore:myStore
+            parameters:
+              action: SEARCH
+              maxResults: 5
+              returnTextContent: true
 ----
 ====
+
+=== Structured error exchange properties
+
+When a LangChain4j embeddings call fails, Camel sets structured metadata on the exchange **before** the model exception propagates. This works even when GenAI observability is disabled.
+
+[cols="2,3"]
+|===
+| Exchange property | Meaning
+
+| `CamelAiErrorCategory` | Coarse category derived from the LangChain4j exception: `RATE_LIMIT`, `SERVER_ERROR`, `VALIDATION`, `AUTH`, or `UNKNOWN`
+| `CamelAiRetryAfterMillis` | Not populated for LangChain4j providers (OpenAI-only today)
+|===
+
+Use categories when a route should branch on failure type without matching every LangChain4j exception class. See xref:langchain4j-chat-component.adoc#_structured_error_exchange_properties[LangChain4j Chat structured error properties] and xref:ai-llm-integration-guide.adoc#_structured_error_exchange_properties[AI LLM integration guide] for related detail.

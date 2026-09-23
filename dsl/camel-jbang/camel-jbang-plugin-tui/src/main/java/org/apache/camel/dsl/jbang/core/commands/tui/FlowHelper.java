@@ -100,9 +100,18 @@ final class FlowHelper {
         renderThroughputChart(frame, area, inHist, outHist, null);
     }
 
+    static int computeRenderPoints(Rect area) {
+        return Math.max(20, (Math.min(MAX_CHART_POINTS, area.width() - 6) / 20) * 20);
+    }
+
     static void renderThroughputChart(
             Frame frame, Rect area, LinkedList<Long> inHist, LinkedList<Long> outHist, String chartLabel) {
-        int renderPoints = Math.max(20, (Math.min(MAX_CHART_POINTS, area.width() - 6) / 20) * 20);
+        renderThroughputChart(frame, area, inHist, outHist, chartLabel, computeRenderPoints(area));
+    }
+
+    static void renderThroughputChart(
+            Frame frame, Rect area, LinkedList<Long> inHist, LinkedList<Long> outHist,
+            String chartLabel, int renderPoints) {
         long[] inArr = new long[renderPoints];
         long[] outArr = new long[renderPoints];
         for (int i = 0; i < renderPoints; i++) {
@@ -128,6 +137,9 @@ final class FlowHelper {
             titleSpans.add(Span.styled(label, Theme.label().bold()));
             titleSpans.add(Span.raw("] "));
         }
+        if (chartLabel == null) {
+            titleSpans.add(Span.raw(" "));
+        }
         titleSpans.add(Span.styled("▬", Theme.success()));
         titleSpans.add(Span.raw(String.format(" in:%-4s ", MetricsCollector.formatThroughput(curIn))));
         titleSpans.add(Span.styled("▬", Style.EMPTY.fg(Theme.accent())));
@@ -139,6 +151,9 @@ final class FlowHelper {
                 .topStyle(Theme.success())
                 .bottomStyle(Style.EMPTY.fg(Theme.accent()))
                 .showYAxis(true)
+                // the data stays scaled by THROUGHPUT_SCALE so sub-1 msg/s rates keep their bar height; the axis
+                // label converts back to msg/s like the title does
+                .yAxisFormatter(MetricsCollector::formatThroughput)
                 .xLabels("-" + renderPoints + "s", "-" + (renderPoints * 3 / 4) + "s",
                         "-" + (renderPoints / 2) + "s", "-" + (renderPoints / 4) + "s", "now")
                 .block(Block.builder().borderType(BorderType.ROUNDED).borders(Borders.ALL)
@@ -148,7 +163,11 @@ final class FlowHelper {
 
     static void renderPayloadSizeChart(
             Frame frame, Rect area, LinkedList<Long> inHist, LinkedList<Long> outHist) {
-        int renderPoints = Math.max(20, (Math.min(MAX_CHART_POINTS, area.width() - 6) / 20) * 20);
+        renderPayloadSizeChart(frame, area, inHist, outHist, computeRenderPoints(area));
+    }
+
+    static void renderPayloadSizeChart(
+            Frame frame, Rect area, LinkedList<Long> inHist, LinkedList<Long> outHist, int renderPoints) {
         long[] inArr = new long[renderPoints];
         long[] outArr = new long[renderPoints];
         for (int i = 0; i < renderPoints; i++) {
@@ -165,6 +184,7 @@ final class FlowHelper {
         long curOut = outArr[renderPoints - 1];
 
         Line chartTitle = Line.from(
+                Span.raw(" "),
                 Span.styled("▬", Theme.label()),
                 Span.raw(String.format(" in:%-8s ", sizeToString(curIn))),
                 Span.styled("▬", Theme.notice()),
@@ -176,6 +196,7 @@ final class FlowHelper {
                 .topStyle(Theme.label())
                 .bottomStyle(Theme.notice())
                 .showYAxis(true)
+                .yAxisFormatter(FlowHelper::compactSize)
                 .xLabels("-" + renderPoints + "s", "-" + (renderPoints * 3 / 4) + "s",
                         "-" + (renderPoints / 2) + "s", "-" + (renderPoints / 4) + "s", "now")
                 .block(Block.builder().borderType(BorderType.ROUNDED).borders(Borders.ALL)
@@ -197,6 +218,27 @@ final class FlowHelper {
         } else {
             return String.format(Locale.US, "%.1f MB", size / (1024.0 * 1024.0));
         }
+    }
+
+    /**
+     * Formats a byte count into at most four characters for the sparkline y-axis, where {@link #sizeToString(long)}
+     * would not fit: {@code 512}, {@code 1.5K}, {@code 12K}, {@code 1.2M}.
+     */
+    static String compactSize(long size) {
+        if (size < 1000) {
+            return String.valueOf(Math.max(0, size));
+        }
+        double kb = size / 1024.0;
+        if (kb < 10) {
+            return String.format(Locale.US, "%.1fK", kb);
+        } else if (kb < 999.5) {
+            return Math.round(kb) + "K";
+        }
+        double mb = kb / 1024.0;
+        if (mb < 10) {
+            return String.format(Locale.US, "%.1fM", mb);
+        }
+        return Math.round(mb) + "M";
     }
 
     private static long unbox(Long value) {

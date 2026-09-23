@@ -61,12 +61,15 @@ public final class MailConverters {
     @Converter
     public static String toString(Message message) throws MessagingException, IOException {
         Object content = message.getContent();
-        while (content instanceof MimeMultipart) {
-            MimeMultipart multipart = (MimeMultipart) content;
-            if (multipart.getCount() > 0) {
-                BodyPart part = multipart.getBodyPart(0);
-                content = part.getContent();
+        while (content instanceof MimeMultipart multipart) {
+            if (multipart.getCount() == 0) {
+                // Nothing to descend into. Without this the loop never reassigns content and spins
+                // forever, pinning the thread on a message an mail.mime.multipart.allowempty
+                // deployment accepts as valid.
+                return null;
             }
+            BodyPart part = multipart.getBodyPart(0);
+            content = part.getContent();
         }
         if (content != null) {
             return content.toString();
@@ -85,17 +88,17 @@ public final class MailConverters {
             for (int i = 0; i < size; i++) {
                 BodyPart part = multipart.getBodyPart(i);
                 Object content = part.getContent();
-                while (content instanceof MimeMultipart) {
-                    if (multipart.getCount() < 1) {
+                while (content instanceof MimeMultipart mimeMultipart) {
+                    if (mimeMultipart.getCount() < 1) {
                         break;
                     }
-                    part = ((MimeMultipart) content).getBodyPart(0);
+                    part = mimeMultipart.getBodyPart(0);
                     content = part.getContent();
                 }
                 // Perform a case-insensitive "startsWith" check that works for different locales
                 String prefix = "text";
                 if (part.getContentType().regionMatches(true, 0, prefix, 0, prefix.length())) {
-                    return part.getContent().toString();
+                    return content.toString();
                 }
             }
         } catch (MessagingException e) {

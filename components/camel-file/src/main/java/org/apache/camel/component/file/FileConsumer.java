@@ -214,7 +214,7 @@ public class FileConsumer extends GenericFileConsumer<File> implements ResumeAwa
     }
 
     private File[] listFiles(File directory) {
-        if (!getEndpoint().isIncludeHiddenDirs() && directory.isHidden()) {
+        if (!getEndpoint().isIncludeHiddenDirs() && isHiddenDirectory(directory)) {
             return null;
         }
         final File[] dirFiles = directory.listFiles();
@@ -379,6 +379,19 @@ public class FileConsumer extends GenericFileConsumer<File> implements ResumeAwa
         return (FileEndpoint) super.getEndpoint();
     }
 
+    /**
+     * Whether the directory is hidden: java.io.File.isHidden only looks at whether the name starts with a dot, so the
+     * current directory (file:. or file:./) and the parent directory (..) would count as hidden and the consumer would
+     * never deliver a file from them (CAMEL-24835).
+     */
+    private static boolean isHiddenDirectory(File directory) {
+        String name = directory.getName();
+        if (name.isEmpty() || ".".equals(name) || "..".equals(name)) {
+            return false;
+        }
+        return directory.isHidden();
+    }
+
     @Override
     protected boolean isMatchedHiddenFile(Supplier<GenericFile<File>> file, String name, boolean isDirectory) {
         if (isDirectory) {
@@ -445,6 +458,9 @@ public class FileConsumer extends GenericFileConsumer<File> implements ResumeAwa
         boolean created = operations.buildDirectory(file.getPath(), absolute);
         if (!created) {
             LOG.warn("Cannot auto create starting directory: {}", file);
+        } else {
+            // CAMEL-24855: INFO so the log says why the consumer is waiting on an empty directory
+            LOG.info("Auto-created starting directory: {}; waiting for files", file);
         }
     }
 

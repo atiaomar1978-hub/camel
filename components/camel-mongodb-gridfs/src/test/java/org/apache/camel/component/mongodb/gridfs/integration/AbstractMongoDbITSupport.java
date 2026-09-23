@@ -29,7 +29,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 public abstract class AbstractMongoDbITSupport extends CamelTestSupport {
     @RegisterExtension
-    public static MongoDBService service = MongoDBServiceFactory.createService();
+    public static MongoDBService service = MongoDBServiceFactory.createSingletonService();
 
     protected static final String FILE_NAME = "filename.for.db.txt";
     protected static final String FILE_DATA = "This is some stuff to go into the db";
@@ -40,10 +40,21 @@ public abstract class AbstractMongoDbITSupport extends CamelTestSupport {
         return this.getClass().getSimpleName();
     }
 
+    /**
+     * Drops all files from all GridFS buckets used by the test class, so subsequent tests start with a clean slate.
+     * Subclasses that add extra buckets should override and call super.
+     */
     @AfterEach
     public void tearDownMongo() {
-        gridFSBucket.find().forEach(gridFSFile -> gridFSBucket.delete(gridFSFile.getId()));
+        dropBucket(gridFSBucket);
+        dropBucket(GridFSBuckets.create(mongo.getDatabase("test"), getBucket() + "-a"));
+        dropBucket(GridFSBuckets.create(mongo.getDatabase("test"), getBucket() + "-pts"));
+        dropBucket(GridFSBuckets.create(mongo.getDatabase("test"), "customFileFilterTest"));
         mongo.close();
+    }
+
+    private static void dropBucket(GridFSBucket bucket) {
+        bucket.find().forEach(f -> bucket.delete(f.getId()));
     }
 
     @Override

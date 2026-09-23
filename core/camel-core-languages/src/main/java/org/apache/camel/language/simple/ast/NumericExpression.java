@@ -21,6 +21,7 @@ import org.apache.camel.Exchange;
 import org.apache.camel.Expression;
 import org.apache.camel.language.simple.types.SimpleParserException;
 import org.apache.camel.language.simple.types.SimpleToken;
+import org.apache.camel.support.ObjectHelper;
 
 /**
  * Represents a numeric value.
@@ -39,12 +40,23 @@ public class NumericExpression extends BaseSimpleNode {
         } else {
             // its either a long or integer value (lets just avoid bytes)
             long lon = Long.parseLong(text);
-            if (lon < Integer.MAX_VALUE) {
-                number = Integer.valueOf(text);
+            if (lon >= Integer.MIN_VALUE && lon <= Integer.MAX_VALUE) {
+                number = (int) lon;
             } else {
                 number = lon;
             }
         }
+    }
+
+    /**
+     * Whether the text can be represented as a numeric value. Numbers with more digits than a long can hold, such as
+     * bank account numbers, are kept as literal text instead, so they can be compared as big integers.
+     */
+    public static boolean isNumericValue(String text) {
+        if (text.indexOf('.') != -1) {
+            return ObjectHelper.isFloatingNumber(text);
+        }
+        return ObjectHelper.isLongNumber(text);
     }
 
     public Object getNumber() {
@@ -56,9 +68,7 @@ public class NumericExpression extends BaseSimpleNode {
         return new Expression() {
             @Override
             public <T> T evaluate(Exchange exchange, Class<T> type) {
-                if (type == Object.class || type == int.class || type == Integer.class
-                        || type == long.class || type == Long.class
-                        || type == double.class || type == Double.class) {
+                if (type == Object.class || type.isInstance(number)) {
                     return type.cast(number);
                 }
                 return exchange.getContext().getTypeConverter().tryConvertTo(type, exchange, number);
@@ -69,17 +79,5 @@ public class NumericExpression extends BaseSimpleNode {
                 return String.valueOf(number);
             }
         };
-    }
-
-    @Override
-    public String createCode(CamelContext camelContext, String expression) throws SimpleParserException {
-        // Double, Long or Integer
-        if (number instanceof Double) {
-            return number + "d";
-        } else if (number instanceof Long) {
-            return number + "l";
-        } else {
-            return number.toString();
-        }
     }
 }

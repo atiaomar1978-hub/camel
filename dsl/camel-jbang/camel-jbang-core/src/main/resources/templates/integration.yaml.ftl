@@ -22,11 +22,15 @@ metadata:
   name: [=Name]
 spec:
   flows:
-    - from:
-        uri: "timer:yaml"
-        parameters:
-          period: "1000"
-        steps:
-          - setBody:
-              constant: "Hello Camel from yaml"
-          - log: "${body}"
+    - route:
+        from:
+          uri: "timer:yaml"
+          parameters:
+            period: "1000"
+          steps:
+            - setBody:
+                expression:
+                  constant:
+                    expression: "Hello Camel from yaml"
+            - log:
+                message: "${body}"

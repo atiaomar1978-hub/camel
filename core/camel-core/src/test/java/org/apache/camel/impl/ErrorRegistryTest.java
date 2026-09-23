@@ -27,6 +27,7 @@ import org.apache.camel.spi.ErrorRegistry;
 import org.apache.camel.spi.ErrorRegistryView;
 import org.junit.jupiter.api.Test;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -170,6 +171,36 @@ public class ErrorRegistryTest extends ContextTestSupport {
     }
 
     @Test
+    public void testErrorRegistryHandledErrorReportsOriginNode() throws Exception {
+        getMockEndpoint("mock:handlerStep").expectedMessageCount(1);
+
+        template.sendBody("direct:handledWithSteps", "Hello World");
+
+        assertMockEndpointsSatisfied();
+
+        BacklogErrorEventMessage entry = context.getErrorRegistry().browse().iterator().next();
+        assertThat(entry.isHandled()).isTrue();
+        assertThat(entry.getToNode())
+                .as("toNode should point to the node that actually failed, not a node touched by the onException handler")
+                .isEqualTo("throwOrigin");
+    }
+
+    @Test
+    public void testErrorRegistryDoCatchReportsOriginNode() throws Exception {
+        getMockEndpoint("mock:catchStep").expectedMessageCount(1);
+
+        template.sendBody("direct:doCatchWithSteps", "Hello World");
+
+        assertMockEndpointsSatisfied();
+
+        BacklogErrorEventMessage entry = context.getErrorRegistry().browse().iterator().next();
+        assertThat(entry.isHandled()).isTrue();
+        assertThat(entry.getToNode())
+                .as("toNode should point to the node that actually failed, not a node touched by the doCatch block")
+                .isEqualTo("throwInTry");
+    }
+
+    @Test
     public void testErrorRegistryCapturesEndpointUri() throws Exception {
         getMockEndpoint("mock:dead").expectedMessageCount(1);
         template.sendBody("direct:withEndpoint", "Hello World");
@@ -191,6 +222,8 @@ public class ErrorRegistryTest extends ContextTestSupport {
         assertNotNull(entry.getMessageHistory(), "Message history should be captured when enabled");
         assertTrue(entry.getMessageHistory().length > 0, "Message history should have at least one entry");
         assertTrue(entry.getMessageHistory()[0].contains("foo"), "Message history should contain route id");
+        // the body as each step was reached (CAMEL-24844)
+        assertTrue(entry.getMessageHistory()[0].contains(" bodyType=java.lang.String"), entry.getMessageHistory()[0]);
     }
 
     @Test
@@ -270,6 +303,23 @@ public class ErrorRegistryTest extends ContextTestSupport {
         assertTrue((long) json.get("elapsed") >= 0);
     }
 
+    @Test
+    public void testMessageHistoryStepSaysTheBodyWasNull() throws Exception {
+        getMockEndpoint("mock:dead").expectedMessageCount(1);
+        context.getMessageSizeStrategy().setEnabled(true);
+
+        template.sendBody("direct:nullbody", "Hello World");
+        assertMockEndpointsSatisfied();
+
+        BacklogErrorEventMessage entry = context.getErrorRegistry().browse().iterator().next();
+        String[] steps = entry.getMessageHistory();
+        assertNotNull(steps);
+        // the throwException step was reached with a null body (set by the step before)
+        String last = steps[steps.length - 1];
+        assertTrue(last.contains("bodyType=null"), last);
+        assertTrue(!last.contains("bodySize="), "no body, no size: " + last);
+    }
+
     @Override
     protected RouteBuilder createRouteBuilder() {
         return new RouteBuilder() {
@@ -282,6 +332,10 @@ public class ErrorRegistryTest extends ContextTestSupport {
 
                 from("direct:start2").routeId("bar")
                         .throwException(new IllegalArgumentException("Forced error 2"));
+
+                from("direct:nullbody").routeId("nullbody")
+                        .setBody().constant(null)
+                        .throwException(new IllegalArgumentException("Forced error on a null body"));
 
                 from("direct:unhandled").routeId("unhandled")
                         .errorHandler(noErrorHandler())
@@ -298,6 +352,19 @@ public class ErrorRegistryTest extends ContextTestSupport {
                         .setProperty("myProp", constant("propValue"))
                         .setHeader("myHeader", constant("headerValue"))
                         .throwException(new IllegalArgumentException("Data error"));
+
+                from("direct:handledWithSteps").routeId("handledWithSteps")
+                        .onException(IllegalArgumentException.class).handled(true).to("mock:handlerStep").end()
+                        .to("mock:before")
+                        .throwException(new IllegalArgumentException("Handled with steps")).id("throwOrigin");
+
+                from("direct:doCatchWithSteps").routeId("doCatchWithSteps")
+                        .doTry()
+                            .to("mock:before")
+                            .throwException(new IllegalArgumentException("Handled in doCatch")).id("throwInTry")
+                        .doCatch(IllegalArgumentException.class)
+                            .to("mock:catchStep")
+                        .end();
             }
         };
     }

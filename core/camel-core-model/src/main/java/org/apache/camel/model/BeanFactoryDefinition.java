@@ -56,8 +56,9 @@ public class BeanFactoryDefinition<P> implements ResourceAware {
     @XmlAttribute(required = true)
     @Metadata(description = "The name of the bean (bean id).")
     private String name;
-    @XmlAttribute(required = true)
-    @Metadata(description = "The class name (fully qualified) of the bean.")
+    @XmlAttribute
+    @Metadata(description = "The class name (fully qualified) of the bean. Required unless the bean is created by a script (scriptLanguage)"
+                            + " or a builder (builderClass), where the type is optional and is then the type the bean is registered as.")
     private String type;
     @XmlAttribute
     @Metadata(label = "advanced",
@@ -77,11 +78,13 @@ public class BeanFactoryDefinition<P> implements ResourceAware {
     private String factoryBean;
     @XmlAttribute
     @Metadata(label = "advanced",
-              description = "Fully qualified class name of builder class to use for creating and configuring the bean. The builder will use the properties values to configure the bean.")
+              description = "Fully qualified class name of builder class to use for creating and configuring the bean. The builder will use the properties values to configure the bean."
+                            + " Not needed for a type that has no public no-arg constructor but a public static builder() or newBuilder() method (such as Lombok, Immutables, LangChain4j or AWS SDK classes):"
+                            + " Camel then infers the builder, sets the properties on it, and creates the bean with its build method.")
     private String builderClass;
     @XmlAttribute
     @Metadata(defaultValue = "build",
-              description = "Name of method when using builder class. This method is invoked after configuring to create the actual bean. This method is often named build (used by default).")
+              description = "Name of method when using builder class (or an inferred builder). This method is invoked after configuring to create the actual bean. This method is often named build (used by default).")
     private String builderMethod;
     @XmlAttribute
     @Metadata(label = "advanced",
@@ -354,6 +357,10 @@ public class BeanFactoryDefinition<P> implements ResourceAware {
     /**
      * Fully qualified class name of builder class to use for creating and configuring the bean. The builder will use
      * the properties values to configure the bean.
+     * <p/>
+     * Not needed for a type that has no public no-arg constructor but a public static <tt>builder()</tt> or
+     * <tt>newBuilder()</tt> method (such as Lombok, Immutables, LangChain4j or AWS SDK classes): Camel then infers the
+     * builder, sets the properties on it, and creates the bean with its build method.
      */
     public BeanFactoryDefinition<P> builderClass(String builderClass) {
         setBuilderClass(builderClass);
@@ -361,8 +368,8 @@ public class BeanFactoryDefinition<P> implements ResourceAware {
     }
 
     /**
-     * Name of method when using builder class. This method is invoked after configuring to create the actual bean. This
-     * method is often named build (used by default).
+     * Name of method when using builder class (or an inferred builder). This method is invoked after configuring to
+     * create the actual bean. This method is often named build (used by default).
      */
     public BeanFactoryDefinition<P> builderMethod(String builderMethod) {
         setBuilderMethod(builderMethod);

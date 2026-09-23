@@ -446,15 +446,43 @@ final class WebsiteInstallerFixture implements AutoCloseable {
             if (pathExt != null) {
                 pb.environment().put("PATHEXT", pathExt);
             }
+            // Without TEMP/TMP, .NET falls back to USERPROFILE (the fresh per-test home) for the scratch
+            // files Add-Type's C# compile writes on every install.ps1 run. install.ps1 itself never stages
+            // anything under the temp directory, so passing the runner's through does not affect isolation.
+            for (String name : List.of("TEMP", "TMP")) {
+                String value = System.getenv(name);
+                if (value != null) {
+                    pb.environment().put(name, value);
+                }
+            }
         }
         pb.environment().putAll(env);
+        String userProfile = env.get("USERPROFILE");
+        if (FakeJava.WINDOWS && userProfile != null) {
+            // Point PSModulePath at the isolated home's own (empty) user module directory. When PSModulePath
+            // is unset, or lists Windows PowerShell's built-in module directory, the first cmdlet call
+            // (install.ps1's Join-Path on line 29) spends ~18s on windows-latest, whose
+            // Program Files\WindowsPowerShell\Modules holds AWSPowerShell, Microsoft.Graph and SqlServer; that
+            // made every install.ps1 run in this suite cost ~20s. With only an unrelated directory listed, the
+            // same call takes 0.2s and Windows PowerShell still finds its built-in cmdlets.
+            pb.environment().put("PSModulePath", Path.of(userProfile, "Documents", "WindowsPowerShell", "Modules").toString());
+        }
         String home = env.get("HOME");
         if (home != null && Files.isDirectory(Path.of(home))) {
             // Any accidental relative-path side effect lands in the isolated test HOME rather than
             // wherever the test JVM happens to be running from.
             pb.directory(Path.of(home).toFile());
         }
+        return execute(pb);
+    }
 
+    /**
+     * Runs {@code pb} with stdout and stderr drained on background threads, so a chatty or stuck child can never block
+     * the test past {@link #PROCESS_TIMEOUT}: reading a stream to EOF before {@code waitFor} would wait for as long as
+     * the child (or any grandchild inheriting its handles) keeps the pipe open.
+     */
+    static Result execute(ProcessBuilder pb) throws Exception {
+        long start = System.nanoTime();
         Process process = pb.start();
         ExecutorService collectors = Executors.newFixedThreadPool(2);
         try {
@@ -463,7 +491,7 @@ final class WebsiteInstallerFixture implements AutoCloseable {
             process.getOutputStream().close();
             if (!process.waitFor(PROCESS_TIMEOUT.toSeconds(), TimeUnit.SECONDS)) {
                 process.destroyForcibly();
-                throw new IllegalStateException("installer did not exit in time");
+                throw new IllegalStateException("process did not exit in time: " + pb.command());
             }
             String out = new String(await(stdout), StandardCharsets.UTF_8);
             String err = new String(await(stderr), StandardCharsets.UTF_8);
@@ -474,6 +502,12 @@ final class WebsiteInstallerFixture implements AutoCloseable {
             }
             collectors.shutdownNow();
             collectors.awaitTermination(10, TimeUnit.SECONDS);
+            // Surefire streams test stdout to the build log as it happens, so these timings survive even when
+            // the fork is killed by forkedProcessTimeoutInSeconds and no XML report is ever written.
+            String command = String.join(" ", pb.command());
+            System.out.printf("[WebsiteInstallerFixture] %d ms: %s%n",
+                    TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start),
+                    command.length() > 160 ? command.substring(0, 160) + "..." : command);
         }
     }
 

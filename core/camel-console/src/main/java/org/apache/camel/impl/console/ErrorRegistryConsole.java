@@ -27,11 +27,19 @@ import org.apache.camel.spi.Metadata;
 import org.apache.camel.spi.annotations.DevConsole;
 import org.apache.camel.support.console.AbstractDevConsole;
 import org.apache.camel.util.TimeUtils;
-import org.apache.camel.util.json.JsonArray;
 import org.apache.camel.util.json.JsonObject;
+import org.apache.camel.util.json.JsonRecordSupport;
 
 @DevConsole(name = "errors", displayName = "Error Registry", description = "Display captured routing errors")
 public class ErrorRegistryConsole extends AbstractDevConsole {
+
+    public record Response(
+            @Metadata(description = "Whether the error registry is enabled") boolean enabled,
+            @Metadata(description = "Number of captured errors") int size,
+            @Metadata(description = "The maximum number of entries retained") int maximumEntries,
+            @Metadata(description = "The time to live for entries") String timeToLive,
+            @Metadata(description = "The captured errors; shape depends on the underlying message implementation") List<Map<String, Object>> errors) {
+    }
 
     @Metadata(label = "query", description = "Filter by route id", javaType = "java.lang.String")
     public static final String ROUTE_ID = "routeId";
@@ -75,10 +83,17 @@ public class ErrorRegistryConsole extends AbstractDevConsole {
             sb.append(String.format("%n    %s (route: %s, node: %s, endpoint: %s, handled: %s)",
                     entry.getExchangeId(), entry.getRouteId(), entry.getToNode(), entry.getEndpointUri(),
                     entry.isHandled()));
+            if (entry.getLocation() != null) {
+                sb.append(String.format("%n      Source: %s", entry.getLocation()));
+            }
             sb.append(String.format("%n      Exception: %s - %s",
                     entry.getExceptionType(), entry.getExceptionMessage()));
             sb.append(String.format("%n      Timestamp: %s, Thread: %s",
                     entry.getTimestamp(), entry.getProcessingThreadName()));
+            if (entry.getRepeatCount() > 1) {
+                sb.append(String.format("%n      Repeated: %s times (first: %s, last: %s)",
+                        entry.getRepeatCount(), entry.getRepeatFirstTimestamp(), entry.getRepeatLastTimestamp()));
+            }
             if (entry.getMessageHistory() != null) {
                 sb.append(String.format("%n      Message History:"));
                 for (String step : entry.getMessageHistory()) {
@@ -97,20 +112,13 @@ public class ErrorRegistryConsole extends AbstractDevConsole {
     }
 
     @Override
-    protected JsonObject doCallJson(Map<String, Object> options) {
+    protected Map<String, Object> doCallJson(Map<String, Object> options) {
         boolean includeStackTrace = optionBoolean(options, STACK_TRACE, false);
 
-        JsonObject root = new JsonObject();
-
         ErrorRegistry registry = getCamelContext().getErrorRegistry();
-        root.put("enabled", registry.isEnabled());
-        root.put("size", registry.size());
-        root.put("maximumEntries", registry.getMaximumEntries());
-        root.put("timeToLive", registry.getTimeToLive().toString());
-
         List<BacklogErrorEventMessage> entries = fetchAndFilter(registry, options);
 
-        final JsonArray list = new JsonArray();
+        List<Map<String, Object>> errors = new ArrayList<>();
         for (BacklogErrorEventMessage entry : entries) {
             JsonObject jo = (JsonObject) entry.asJSon();
             if (!includeStackTrace) {
@@ -120,11 +128,13 @@ public class ErrorRegistryConsole extends AbstractDevConsole {
                     exObj.remove("stackTrace");
                 }
             }
-            list.add(jo);
+            errors.add(jo);
         }
-        root.put("errors", list);
 
-        return root;
+        Response response = new Response(
+                registry.isEnabled(), registry.size(), registry.getMaximumEntries(), registry.getTimeToLive().toString(),
+                errors);
+        return JsonRecordSupport.toJsonObject(response);
     }
 
     private List<BacklogErrorEventMessage> fetchAndFilter(ErrorRegistry registry, Map<String, Object> options) {

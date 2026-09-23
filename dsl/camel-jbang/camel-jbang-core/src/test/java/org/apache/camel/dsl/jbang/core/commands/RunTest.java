@@ -17,6 +17,7 @@
 
 package org.apache.camel.dsl.jbang.core.commands;
 
+import org.apache.camel.dsl.jbang.core.common.RuntimeType;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import picocli.CommandLine;
@@ -25,6 +26,33 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class RunTest extends CamelCommandBaseTestSupport {
+
+    @Test
+    public void shouldDefaultToJBangRuntime() throws Exception {
+        Run command = new Run(new CamelJBangMain());
+        CommandLine.populateCommand(command, "route.yaml");
+
+        assertThat(command.runtime).isEqualTo(RuntimeType.jbang);
+    }
+
+    @Test
+    public void shouldParseRuntimeOption() throws Exception {
+        Run command = new Run(new CamelJBangMain());
+        CommandLine.populateCommand(command, "--runtime=main", "route.yaml");
+        assertThat(command.runtime).isEqualTo(RuntimeType.main);
+
+        command = new Run(new CamelJBangMain());
+        CommandLine.populateCommand(command, "--runtime=camel-main", "route.yaml");
+        assertThat(command.runtime).isEqualTo(RuntimeType.main);
+
+        command = new Run(new CamelJBangMain());
+        CommandLine.populateCommand(command, "--runtime=jbang", "route.yaml");
+        assertThat(command.runtime).isEqualTo(RuntimeType.jbang);
+
+        command = new Run(new CamelJBangMain());
+        CommandLine.populateCommand(command, "--runtime=spring-boot", "route.yaml");
+        assertThat(command.runtime).isEqualTo(RuntimeType.springBoot);
+    }
 
     @Test
     public void shouldParseJavaVersionOption() throws Exception {
@@ -66,7 +94,7 @@ class RunTest extends CamelCommandBaseTestSupport {
 
         Assertions.assertEquals(0, exit);
         String output = printer.getOutput();
-        Assertions.assertTrue(output.contains("Available examples:"));
+        Assertions.assertTrue(output.contains("Examples: "));
         Assertions.assertTrue(output.contains("circuit-breaker"));
         Assertions.assertTrue(output.contains("groovy"));
         Assertions.assertTrue(output.contains("routes"));
@@ -82,9 +110,23 @@ class RunTest extends CamelCommandBaseTestSupport {
     }
 
     @Test
+    public void shouldListOneGroupInFull() throws Exception {
+        Run command = new Run(new CamelJBangMain().withPrinter(printer));
+        command.example = "route";
+        int exit = command.doCall();
+
+        Assertions.assertEquals(0, exit);
+        String output = printer.getOutput();
+        Assertions.assertTrue(output.contains("Route:"));
+        Assertions.assertTrue(output.contains("aggregator"));
+        Assertions.assertTrue(output.contains("eips: "));
+        Assertions.assertFalse(output.contains("timer-log"), "only the group asked for is listed");
+    }
+
+    @Test
     public void shouldSuggestSimilarExample() throws Exception {
         Run command = new Run(new CamelJBangMain().withPrinter(printer));
-        command.example = "eip/circuit-brake";
+        command.example = "fail-well/circuit-brake";
         int exit = command.doCall();
 
         Assertions.assertEquals(1, exit);

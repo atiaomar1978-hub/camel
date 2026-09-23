@@ -24,6 +24,24 @@ Camel will automatically type convert the rightValue type to the
 leftValue type, so it is able to e.g., convert a string into a numeric, so
 you can use `>` comparison for numeric values.
 
+=== Where the operators go
+
+An operator can be written inside `${ }` or outside it:
+
+[source,text]
+----
+${body != null && body.size() > 0}     <1>
+${body} != null && ${body.size()} > 0  <2>
+----
+<1> the braces hold a predicate, and answer whether it matches
+<2> the operators are between the functions, and the whole text is the predicate
+
+Both mean the same thing. Inside the braces the answer is a value, so it can be used in a template as
+well: `Over three: ${header.n > 3}` gives `Over three: true`.
+
+An operator is only an operator when whitespace surrounds it, which is what keeps a name such as
+`${header.Content-Length}` and a pattern such as `${date:now:yyyy-MM-dd}` a plain function.
+
 === Comparison Operators
 
 The following comparison operators are supported:
@@ -45,6 +63,8 @@ The following comparison operators are supported:
 |`!contains` | For testing if it does not contain in a string-based value
 |`endsWith` | For testing if the left-hand side string ends with the right-hand string.
 |`!endsWith` | For testing if the left-hand side string does not end with the right-hand string.
+|`equals` | For testing if the left-hand side string is equal to the right-hand string, compared as text only.
+|`!equals` | For testing if the left-hand side string is not equal to the right-hand string, compared as text only.
 |`in` | For matching if in a set of values, each element must be separated by comma. If you want to include an empty value, then it must be defined using double comma, e.g. `",,bronze,silver,gold"`, which is a set of four values with an empty value and then the three medals.
 |`!in` | For matching if not in a set of values, each element must be separated by comma. If you want to include an empty value, then it must be defined using double comma, e.g. `",,bronze,silver,gold"`, which is a set of four values with an empty value and then the three medals.
 |`is` | For matching if the left-hand side type is an instance of the value.
@@ -56,6 +76,18 @@ The following comparison operators are supported:
 |`startsWith` | For testing if the left-hand side string starts with the right-hand string.
 |`!startsWith` | For testing if the left-hand side string does not start with the right-hand string.
 |====
+
+When both sides of `==` are strings made up only of digits, they are compared as numbers. That is what makes
+`0001 == 001` true, which is usually what you want for values that happen to be written with padding, such as
+the hour from `${date:now:HH}`. It is not what you want for identifiers like account numbers, where the leading
+zeros carry meaning. Use `equals` for those, as it always compares the two values as text:
+
+[source,java]
+----
+// Account1 is "0001" and Account2 is "001"
+.filter().simple("${header.Account1} == ${header.Account2}")     // true, compared as numbers
+.filter().simple("${header.Account1} equals ${header.Account2}") // false, compared as text
+----
 
 === Numeric Operators
 
@@ -101,6 +133,8 @@ The following other operators can be used:
 |`?:` | The elvis operator returns the left-hand side if it has an effective Boolean value of true, otherwise it returns the right-hand side. This is useful for providing fallback values when an expression may evaluate to a value with an effective Boolean value of false (such as `null`, `false`, `0`, empty/blank string).
 |`~>` | The chain operator is used in the situations where multiple nested functions need to be applied to a value, while making it easy to read. The value on the left-hand-side is evaluated, and set as the new message body before evaluating the right-hand-side function. This concept is similar to the xref:eips:pipeline-eip.adoc[Pipeline EIP].
 |`?~>` | The null-safe chain operator, where the chain will not continue when a function returned `null`.
+|`:=` | Assigns a local variable in the init block at the top of an expression (`$init{ $minAge := 18; }init$`), see xref:simple-advanced.adoc#_init_blocks[Init Blocks].
+|`~:=` | Declares a local custom function in the init block, usually as a chain (`$init{ $clean ~:= ${trim()} ~> ${uppercase()}; }init$`), called as `${clean()}`, see xref:simple-advanced.adoc#_init_blocks_with_custom_functions[Init Blocks with custom functions].
 |====
 
 ==== Ternary Operator
@@ -109,14 +143,40 @@ The syntax for the ternary operator is:
 
 [source,text]
 ----
-${leftValue} OP rightValue ? trueValue : falseValue
+${leftValue OP rightValue ? trueValue : falseValue}
 ----
+
+The condition may be several comparisons joined by `&&` or `||`:
+
+[source,text]
+----
+${header.age > 18 && header.country == 'DK' ? 'yes' : 'no'}
+----
+
+The whole ternary must be inside a single `${ }`. Outside `${ }` a Simple expression is a template,
+so a `?` and a `:` there are literal text and the operator is not evaluated. For example:
+
+[source,text]
+----
+${body.size()} == 0 ? ${null} : ${body[0]}
+----
+
+is not a ternary: it returns the text `1 == 0 ?  : ...`, because only the two functions are
+evaluated and the rest is copied as-is.
 
 For example the following ternary operator will return `positive` if header `foo` is greater than 0, otherwise `negative`:
 
 [source,java]
 ----
 simple("${header.foo > 0 ? 'positive' : 'negative'}");
+----
+
+The two values can be a quoted literal, a number, `true`, `false`, `null`, or a nested function:
+
+[source,java]
+----
+simple("${header.foo > 0 ? 1 : 0}");
+simple("${header.foo > 0 ? ${header.foo} : null}");
 ----
 
 Ternary operators can also be nested to handle multiple conditions:
@@ -343,12 +403,13 @@ order:
 ._XML-only:_
 [source,xml]
 ----
-<from uri="seda:orders">
-   <filter>
-       <simple>${header.type} == 'widget'</simple>
-       <to uri="bean:orderService?method=handleWidget"/>
-   </filter>
-</from>
+<route>
+  <from uri="seda:orders"/>
+  <filter>
+    <simple>${header.type} == 'widget'</simple>
+    <to uri="bean:orderService?method=handleWidget"/>
+  </filter>
+</route>
 ----
 
 === Combining multiple expression using AND / OR Operator

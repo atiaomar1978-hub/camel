@@ -66,30 +66,6 @@ public final class BeanFunctionFactory implements SimpleLanguageFunctionFactory 
         return bean.createExpression(null, properties);
     }
 
-    @Override
-    @SuppressWarnings("deprecation")
-    public String createCode(CamelContext camelContext, String function, int index) {
-        String remainder = ifStartsWithReturnRemainder("bean:", function);
-        if (remainder == null) {
-            return null;
-        }
-
-        String[] parsed = parseBeanRemainder(remainder);
-        String ref = parsed[0];
-        String method = parsed[1];
-        String scope = parsed[2];
-
-        if (method != null && scope != null) {
-            return "bean(exchange, bean, \"" + ref + "\", \"" + method + "\", \"" + scope + "\")";
-        } else if (method != null) {
-            return "bean(exchange, bean, \"" + ref + "\", \"" + method + "\", null)";
-        } else if (scope != null) {
-            return "bean(exchange, bean, \"" + ref + "\", null, \"" + scope + "\")";
-        } else {
-            return "bean(exchange, bean, \"" + ref + "\", null, null)";
-        }
-    }
-
     private static String[] parseBeanRemainder(String remainder) {
         String ref = remainder;
         String method = null;
@@ -115,6 +91,17 @@ public final class BeanFunctionFactory implements SimpleLanguageFunctionFactory 
             if (doubleColonIndex > 0 && (!remainder.contains("(") || doubleColonIndex < beginOfParameterDeclaration)) {
                 ref = remainder.substring(0, doubleColonIndex);
                 method = remainder.substring(doubleColonIndex + 2);
+            } else if (remainder.startsWith("type:")) {
+                // type:com.foo.MyClass.myMethod: the class name has dots, so the method is the last part
+                // when it starts with a lower case letter, as Java method names do
+                String beforeParams = beginOfParameterDeclaration > 0
+                        ? remainder.substring(0, beginOfParameterDeclaration) : remainder;
+                int idx = beforeParams.lastIndexOf('.');
+                if (idx > 0 && idx + 1 < beforeParams.length()
+                        && Character.isLowerCase(beforeParams.charAt(idx + 1))) {
+                    ref = remainder.substring(0, idx);
+                    method = remainder.substring(idx + 1);
+                }
             } else {
                 int idx = remainder.indexOf('.');
                 if (idx > 0) {

@@ -33,6 +33,10 @@ public class OpenAIMockServerHandler implements HttpHandler {
     private final AudioTranscriptionRequestHandler audioTranscriptionRequestHandler;
     private final AudioTranscriptionRequestHandler audioTranslationRequestHandler;
     private final SpeechRequestHandler speechRequestHandler;
+    private final ModerationRequestHandler moderationRequestHandler;
+    private final ImageRequestHandler imageGenerationRequestHandler;
+    private final ImageRequestHandler imageEditRequestHandler;
+    private final BatchRequestHandler batchRequestHandler;
 
     public OpenAIMockServerHandler(OpenAIMockExpectations expectations, ObjectMapper objectMapper) {
         this.chatRequestHandler = new RequestHandler(expectations.chat(), objectMapper);
@@ -43,14 +47,27 @@ public class OpenAIMockServerHandler implements HttpHandler {
         this.audioTranslationRequestHandler
                 = new AudioTranscriptionRequestHandler(expectations.translations(), objectMapper);
         this.speechRequestHandler = new SpeechRequestHandler(expectations.speeches(), objectMapper);
+        this.moderationRequestHandler = new ModerationRequestHandler(expectations.moderations(), objectMapper);
+        this.imageGenerationRequestHandler
+                = new ImageRequestHandler(expectations.imageGenerations(), objectMapper, false);
+        this.imageEditRequestHandler = new ImageRequestHandler(expectations.imageEdits(), objectMapper, true);
+        this.batchRequestHandler
+                = new BatchRequestHandler(expectations.batches(), expectations.batchStore(), objectMapper);
     }
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
-        if ("POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+        String path = exchange.getRequestURI().getPath();
+        // the Files and Batch APIs answer on GET and DELETE as well, and write their own response
+        if (BatchRequestHandler.handles(path)) {
+            batchRequestHandler.handleRequest(exchange);
+            return;
+        }
+        // a stored Responses API response is retrieved with GET and cancelled with POST .../cancel
+        boolean storedResponse = path.contains("/responses/");
+        if ("POST".equalsIgnoreCase(exchange.getRequestMethod())
+                || storedResponse && "GET".equalsIgnoreCase(exchange.getRequestMethod())) {
             try {
-                String path = exchange.getRequestURI().getPath();
-
                 if (path.endsWith("/audio/speech")) {
                     speechRequestHandler.handleRequest(exchange);
                     return;
@@ -58,12 +75,20 @@ public class OpenAIMockServerHandler implements HttpHandler {
 
                 String response;
 
-                if (path.endsWith("/audio/transcriptions")) {
+                if (storedResponse) {
+                    response = responsesRequestHandler.handleStoredResponse(exchange);
+                } else if (path.endsWith("/audio/transcriptions")) {
                     response = audioTranscriptionRequestHandler.handleRequest(exchange);
                 } else if (path.endsWith("/audio/translations")) {
                     response = audioTranslationRequestHandler.handleRequest(exchange);
                 } else if (path.endsWith("/embeddings")) {
                     response = embeddingRequestHandler.handleRequest(exchange);
+                } else if (path.endsWith("/images/generations")) {
+                    response = imageGenerationRequestHandler.handleRequest(exchange);
+                } else if (path.endsWith("/images/edits")) {
+                    response = imageEditRequestHandler.handleRequest(exchange);
+                } else if (path.endsWith("/moderations")) {
+                    response = moderationRequestHandler.handleRequest(exchange);
                 } else if (path.endsWith("/responses")) {
                     response = responsesRequestHandler.handleRequest(exchange);
                 } else {
@@ -72,6 +97,12 @@ public class OpenAIMockServerHandler implements HttpHandler {
 
                 byte[] responseBytes = response.getBytes();
                 if (exchange.getResponseCode() == -1) {
+                    if (path.endsWith("/audio/transcriptions") || path.endsWith("/audio/translations")
+                            || path.endsWith("/embeddings") || path.endsWith("/moderations")
+                            || path.endsWith("/images/generations") || path.endsWith("/images/edits")
+                            || path.endsWith("/responses") || path.endsWith("/chat/completions")) {
+                        exchange.getResponseHeaders().set("Content-Type", "application/json");
+                    }
                     exchange.sendResponseHeaders(200, responseBytes.length);
                 }
                 try (OutputStream os = exchange.getResponseBody()) {

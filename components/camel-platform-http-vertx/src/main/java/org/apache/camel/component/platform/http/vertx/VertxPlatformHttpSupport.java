@@ -33,7 +33,6 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.core.streams.Pump;
 import io.vertx.ext.web.RoutingContext;
 import org.apache.camel.Exchange;
 import org.apache.camel.Message;
@@ -243,20 +242,23 @@ public final class VertxPlatformHttpSupport {
 
         // Process the InputStream async to avoid blocking the Vert.x event loop on large responses
         AsyncInputStream asyncInputStream = new AsyncInputStream(vertx, context, is, eagerFlush);
-        asyncInputStream.exceptionHandler(promise::fail);
-        asyncInputStream.endHandler(event -> endHandler(promise, response, asyncInputStream));
-
-        // Pump the InputStream content into the HTTP response WriteStream
-        Pump pump = Pump.pump(asyncInputStream, response);
-        context.runOnContext(event -> pump.start());
-    }
-
-    private static void endHandler(Promise<Void> promise, HttpServerResponse response, AsyncInputStream asyncInputStream) {
-        response.end().onComplete(result -> onComplete(promise, asyncInputStream));
-    }
-
-    private static void onComplete(Promise<Void> promise, AsyncInputStream asyncInputStream) {
-        asyncInputStream.close(closeResult -> promise.complete());
+        context.runOnContext(event -> asyncInputStream.pipe()
+                .endOnFailure(false)
+                .to(response)
+                .onComplete(result -> asyncInputStream.close(closeResult -> {
+                    if (result.failed()) {
+                        Throwable cause = result.cause();
+                        if (cause == asyncInputStream.getReadFailure()) {
+                            promise.fail(cause);
+                        } else {
+                            // The InputStream did not fail, so writing to the response did. That happens when the
+                            // client has gone away, possibly before the response has been flagged as closed.
+                            promise.fail(new ResponseWriteException(cause));
+                        }
+                    } else {
+                        promise.complete();
+                    }
+                })));
     }
 
     static void populateCamelHeaders(
@@ -272,9 +274,11 @@ public final class VertxPlatformHttpSupport {
             applyHeaderFilterStrategy(ctx, headersMap, exchange, headerFilterStrategy, request);
         }
 
-        // Path parameters
+        // Path parameters: the value from the path wins over an incoming header of that name. A path parameter is
+        // single-valued and part of the route's contract, so appending would turn ${header.sku} into a list and a
+        // correct value would fail (CAMEL-24910); a query parameter may repeat and is still appended.
         for (Map.Entry<String, String> en : ctx.pathParams().entrySet()) {
-            appendEntry(headersMap, en.getKey(), en.getValue());
+            headersMap.put(en.getKey(), en.getValue());
         }
 
         SocketAddress localAddress = request.localAddress();

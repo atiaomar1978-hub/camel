@@ -19,13 +19,11 @@ package org.apache.camel.language.simple.ast;
 import org.apache.camel.CamelContext;
 import org.apache.camel.Exchange;
 import org.apache.camel.Expression;
-import org.apache.camel.language.simple.BaseSimpleParser;
 import org.apache.camel.language.simple.types.OtherOperatorType;
 import org.apache.camel.language.simple.types.SimpleParserException;
 import org.apache.camel.language.simple.types.SimpleToken;
 import org.apache.camel.util.ObjectHelper;
 import org.apache.camel.util.StringHelper;
-import org.apache.camel.util.StringQuoteHelper;
 
 /**
  * Represents other operator expression in the AST.
@@ -97,11 +95,12 @@ public class OtherExpression extends BaseSimpleNode {
         return new Expression() {
             @Override
             public <T> T evaluate(Exchange exchange, Class<T> type) {
+                // evaluate only once as the left hand side may have side effects
                 Object value = leftExp.evaluate(exchange, Object.class);
-                if (value == null || Boolean.FALSE == value || ObjectHelper.isEmpty(value) || ObjectHelper.equal(0, value)) {
+                if (value == null || Boolean.FALSE == value || ObjectHelper.isEmpty(value) || isZero(value)) {
                     return rightExp.evaluate(exchange, type);
                 } else {
-                    return leftExp.evaluate(exchange, type);
+                    return camelContext.getTypeConverter().convertTo(type, exchange, value);
                 }
             }
 
@@ -112,34 +111,8 @@ public class OtherExpression extends BaseSimpleNode {
         };
     }
 
-    @Override
-    public String createCode(CamelContext camelContext, String expression) throws SimpleParserException {
-        return BaseSimpleParser.CODE_START + doCreateCode(camelContext, expression) + BaseSimpleParser.CODE_END;
+    private static boolean isZero(Object value) {
+        // any kind of number such as 0, 0L, 0.0 or BigDecimal.ZERO; -0.0 is also zero, NaN is not
+        return value instanceof Number n && n.doubleValue() == 0;
     }
-
-    private String doCreateCode(CamelContext camelContext, String expression) throws SimpleParserException {
-        ObjectHelper.notNull(left, "left node", this);
-        ObjectHelper.notNull(right, "right node", this);
-
-        // the expression parser does not parse literal text into single/double quote tokens
-        // so we need to manually remove leading quotes from the literal text when using the other operators
-        final String leftExp = left.createCode(camelContext, expression);
-        if (right instanceof LiteralExpression le) {
-            String text = le.getText();
-            // must be in double quotes to be a String type
-            String changed = StringHelper.removeLeadingAndEndingQuotes(text);
-            changed = StringQuoteHelper.doubleQuote(changed);
-            if (!changed.equals(text)) {
-                le.replaceText(changed);
-            }
-        }
-        final String rightExp = right.createCode(camelContext, expression);
-
-        if (operator == OtherOperatorType.ELVIS) {
-            return "elvis(exchange, " + leftExp + ", " + rightExp + ")";
-        }
-
-        throw new SimpleParserException("Unknown other operator " + operator, token.getIndex());
-    }
-
 }

@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache</groupId>
         <artifactId>apache</artifactId>
-        <version>39</version>
+        <version>40</version>
     </parent>
 
     <groupId>org.apache.camel</groupId>
@@ -133,9 +133,9 @@
         <cyclonedx-maven-plugin-version>2.9.3</cyclonedx-maven-plugin-version>
         <flatten-maven-plugin-version>1.8.0</flatten-maven-plugin-version>
         <jacoco-version>0.8.15</jacoco-version>
-        <license-maven-plugin-version>5.1.1</license-maven-plugin-version>
+        <license-maven-plugin-version>5.1.2</license-maven-plugin-version>
         <maven-assembly-plugin-version>3.8.0</maven-assembly-plugin-version>
-        <maven-compiler-plugin-version>3.15.0</maven-compiler-plugin-version>
+        <maven-compiler-plugin-version>3.16.0</maven-compiler-plugin-version>
         <maven-dependency-plugin-version>3.11.0</maven-dependency-plugin-version>
         <maven-enforcer-plugin-version>3.6.3</maven-enforcer-plugin-version>
         <maven-invoker-plugin-version>3.10.1</maven-invoker-plugin-version>
@@ -143,8 +143,8 @@
         <maven-release-plugin-version>3.3.1</maven-release-plugin-version>
         <maven-remote-resources-plugin-version>3.3.0</maven-remote-resources-plugin-version>
         <maven-surefire-plugin-version>3.5.6</maven-surefire-plugin-version>
-        <templating-maven-plugin-version>3.1.0</templating-maven-plugin-version>
-        <versions-maven-plugin-version>2.21.0</versions-maven-plugin-version>
+        <templating-maven-plugin-version>3.1.1</templating-maven-plugin-version>
+        <versions-maven-plugin-version>2.22.0</versions-maven-plugin-version>
 
         <camel.javadoc.offline>false</camel.javadoc.offline>
         <invoker.skip>${skipTests}</invoker.skip>
@@ -360,7 +360,6 @@
                                     <exclude>**/javamail.default.*</exclude>
                                     <exclude>**/kafka*.config</exclude>
                                     <exclude>**/known_hosts*</exclude>
-                                    <exclude>**/leveldb.dat/**</exclude>
                                     <exclude>**/mosquitto.conf</exclude>
                                     <exclude>**/myjaas.config</exclude>
                                     <exclude>**/node_modules/**</exclude>
@@ -434,6 +433,7 @@
                             <ps1>SCRIPT_STYLE</ps1>
                             <qf.cfg>CAMEL_PROPERTIES_STYLE</qf.cfg>
                             <robot>SCRIPT_STYLE</robot>
+                            <rego>SCRIPT_STYLE</rego>
                             <rs>DOUBLESLASH_STYLE</rs>
                             <sch>XML_STYLE</sch>
                             <spring.factories>CAMEL_PROPERTIES_STYLE</spring.factories>
@@ -632,6 +632,21 @@
                             build produces no native Windows executables and no WinGet payload.
                         -->
                         <arguments>-Prelease -Dcamel.exe.build=true</arguments>
+                        <!--
+                            After the development SNAPSHOT version is set, rebuild to regenerate
+                            all files in src/generated/ directories that embed the project version.
+                            Without this step, those generated metadata files (JSON descriptors,
+                            configurer sources, endpoint-dsl, etc.) would still carry the just-
+                            released version instead of the new SNAPSHOT, requiring a manual
+                            "refresh" PR after every release (see CAMEL-23376).
+
+                            The same <arguments> above apply here, so tests are skipped and the
+                            release profile is active — but no artifacts are deployed; the rebuilt
+                            jars are installed locally only, and the regenerated src/generated/
+                            files are folded into the "prepare for next development iteration" SCM
+                            commit by the release plugin.
+                        -->
+                        <completionGoals>install</completionGoals>
                         <autoVersionSubmodules>true</autoVersionSubmodules>
                     </configuration>
                 </plugin>
@@ -977,6 +992,43 @@
                 </pluginRepository>
             </pluginRepositories>
         </profile>
+        <profile>
+            <!--
+                Opt-in dependency analysis profile.
+                Usage: mvn compile pilot:dependencies -Pdep-check -Dpilot.skipTestScope=true [-Dpilot.action=check]
+                Leverages eu.maveniverse.maven.plugins:pilot-plugin:dependencies for
+                bytecode-level analysis: detects unused declared and used transitive deps.
+                Non-blocking by default (report mode); use -Dpilot.action=check to fail
+                the build on findings, or -Dpilot.action=fix to apply fixes to pom.xml.
+                Use -Dpilot.skipTestScope=true to skip test-scoped dependency analysis.
+            -->
+            <id>dep-check</id>
+            <build>
+                <pluginManagement>
+                    <plugins>
+                        <plugin>
+                            <groupId>eu.maveniverse.maven.plugins</groupId>
+                            <artifactId>pilot-plugin</artifactId>
+                            <version>0.4.0</version>
+                            <configuration>
+                                <ignoredUnusedDeclared>
+                                    <!-- Logging implementations are runtime deps intentionally declared at compile scope -->
+                                    <ignoredUnusedDeclared>org.apache.logging.log4j:log4j-slf4j2-impl</ignoredUnusedDeclared>
+                                    <ignoredUnusedDeclared>org.apache.logging.log4j:log4j-core</ignoredUnusedDeclared>
+                                    <!-- JUnit aggregator is declared in parent; code compiles against junit-jupiter-api -->
+                                    <ignoredUnusedDeclared>org.junit.jupiter:junit-jupiter</ignoredUnusedDeclared>
+                                </ignoredUnusedDeclared>
+                                <ignoredUsedTransitive>
+                                    <ignoredUsedTransitive>org.junit.jupiter:junit-jupiter-api</ignoredUsedTransitive>
+                                    <ignoredUsedTransitive>org.junit.jupiter:junit-jupiter-params</ignoredUsedTransitive>
+                                </ignoredUsedTransitive>
+                            </configuration>
+                        </plugin>
+                    </plugins>
+                </pluginManagement>
+            </build>
+        </profile>
+
         <profile>
             <!-- The full profile contains mojos *not* essential for the quick build. -->
             <!-- These are typically various source checks and code generations whose result is stored in git anyway. -->

@@ -84,6 +84,10 @@ public final class SensitiveUtils {
                     "connectionstring",
                     "consumerkey",
                     "consumersecret",
+                    "databasepassword",
+                    "databasesslkeystorepassword",
+                    "databasesslpassword",
+                    "databasessltruststorepassword",
                     "emailaddress",
                     "functionkey",
                     "hostkey",
@@ -95,6 +99,7 @@ public final class SensitiveUtils {
                     "knownhosts",
                     "knownhostsfile",
                     "knownhostsuri",
+                    "mongodbpassword",
                     "oauthclientid",
                     "oauthclientsecret",
                     "oauthtoken",
@@ -103,6 +108,7 @@ public final class SensitiveUtils {
                     "passphrase",
                     "password",
                     "personalaccesstoken",
+                    "postmanapikey",
                     "privatekey",
                     "privatekeyfile",
                     "privatekeyname",
@@ -121,6 +127,7 @@ public final class SensitiveUtils {
                     "sasljaasconfig",
                     "saslpassword",
                     "sassignature",
+                    "sastoken",
                     "secret",
                     "secretkey",
                     "securerandom",
@@ -183,6 +190,10 @@ public final class SensitiveUtils {
                                                     + "|\\Qconnectionstring\\E"
                                                     + "|\\Qconsumerkey\\E"
                                                     + "|\\Qconsumersecret\\E"
+                                                    + "|\\Qdatabasepassword\\E"
+                                                    + "|\\Qdatabasesslkeystorepassword\\E"
+                                                    + "|\\Qdatabasesslpassword\\E"
+                                                    + "|\\Qdatabasessltruststorepassword\\E"
                                                     + "|\\Qemailaddress\\E"
                                                     + "|\\Qfunctionkey\\E"
                                                     + "|\\Qhostkey\\E"
@@ -194,6 +205,7 @@ public final class SensitiveUtils {
                                                     + "|\\Qknownhosts\\E"
                                                     + "|\\Qknownhostsfile\\E"
                                                     + "|\\Qknownhostsuri\\E"
+                                                    + "|\\Qmongodbpassword\\E"
                                                     + "|\\Qoauthclientid\\E"
                                                     + "|\\Qoauthclientsecret\\E"
                                                     + "|\\Qoauthtoken\\E"
@@ -202,6 +214,7 @@ public final class SensitiveUtils {
                                                     + "|\\Qpassphrase\\E"
                                                     + "|\\Qpassword\\E"
                                                     + "|\\Qpersonalaccesstoken\\E"
+                                                    + "|\\Qpostmanapikey\\E"
                                                     + "|\\Qprivatekey\\E"
                                                     + "|\\Qprivatekeyfile\\E"
                                                     + "|\\Qprivatekeyname\\E"
@@ -220,6 +233,7 @@ public final class SensitiveUtils {
                                                     + "|\\Qsasljaasconfig\\E"
                                                     + "|\\Qsaslpassword\\E"
                                                     + "|\\Qsassignature\\E"
+                                                    + "|\\Qsastoken\\E"
                                                     + "|\\Qsecret\\E"
                                                     + "|\\Qsecretkey\\E"
                                                     + "|\\Qsecurerandom\\E"

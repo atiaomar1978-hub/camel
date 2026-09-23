@@ -23,12 +23,14 @@ import org.apache.camel.CamelContext;
 import org.apache.camel.Exchange;
 import org.apache.camel.Expression;
 import org.apache.camel.Predicate;
-import org.apache.camel.language.simple.BaseSimpleParser;
 import org.apache.camel.language.simple.SimpleExpressionParser;
 import org.apache.camel.language.simple.SimplePredicateParser;
+import org.apache.camel.language.simple.SimpleSyntaxHints;
 import org.apache.camel.language.simple.types.SimpleIllegalSyntaxException;
 import org.apache.camel.language.simple.types.SimpleParserException;
 import org.apache.camel.language.simple.types.SimpleToken;
+import org.apache.camel.language.simple.types.SimpleTokenType;
+import org.apache.camel.language.simple.types.TokenType;
 import org.apache.camel.util.StringHelper;
 
 /**
@@ -260,7 +262,8 @@ public class SimpleFunctionStart extends BaseSimpleNode implements BlockStart {
     }
 
     /**
-     * Parse a value as an expression. Handles quoted literals, functions, ternary expressions, and null.
+     * Parse a value as an expression. Handles quoted literals, numbers, booleans, functions, ternary expressions, and
+     * null.
      */
     private Expression parseValueExpression(CamelContext camelContext, String text) {
         // Handle quoted strings
@@ -294,6 +297,16 @@ public class SimpleFunctionStart extends BaseSimpleNode implements BlockStart {
             };
         }
 
+        // Handle a number or boolean: a value on its own, not a function, so it must not be
+        // wrapped in ${} further below (CAMEL-24826)
+        if (NumericExpression.isNumericValue(text)) {
+            return new NumericExpression(getToken(), text).createExpression(camelContext, text);
+        }
+        if ("true".equals(text) || "false".equals(text)) {
+            SimpleToken value = new SimpleToken(new SimpleTokenType(TokenType.booleanValue, text), getToken().getIndex());
+            return new BooleanExpression(value).createExpression(camelContext, text);
+        }
+
         // Check if this is a nested ternary expression (contains ? and :)
         Expression ternaryExp = tryParseTernaryExpression(camelContext, text);
         if (ternaryExp != null) {
@@ -320,50 +333,18 @@ public class SimpleFunctionStart extends BaseSimpleNode implements BlockStart {
         if (conditionText.contains("${")) {
             return conditionText;
         }
-
-        // Find the operator in the condition
-        String[] operators = {
-                " >= ", " <= ", " > ", " < ", " == ", " != ", " =~ ", " !=~ ",
-                " contains ", " !contains ", " ~~ ", " !~~ ", " regex ", " !regex ",
-                " in ", " !in ", " is ", " !is ", " range ", " !range ",
-                " startsWith ", " !startsWith ", " endsWith ", " !endsWith " };
-
-        for (String op : operators) {
-            int opIdx = conditionText.indexOf(op);
-            if (opIdx > 0) {
-                String leftSide = conditionText.substring(0, opIdx).trim();
-                String rightSide = conditionText.substring(opIdx + op.length()).trim();
-
-                // Wrap the left side with ${} if it looks like a function reference
-                if (!leftSide.startsWith("${") && !leftSide.startsWith("'") && !leftSide.startsWith("\"")
-                        && !isNumeric(leftSide) && !"true".equalsIgnoreCase(leftSide)
-                        && !"false".equalsIgnoreCase(leftSide) && !"null".equalsIgnoreCase(leftSide)) {
-                    leftSide = "${" + leftSide + "}";
-                }
-
-                return leftSide + op + rightSide;
-            }
-        }
-
-        // No operator found, return as-is
-        return conditionText;
-    }
-
-    private boolean isNumeric(String str) {
-        if (str == null || str.isEmpty()) {
-            return false;
-        }
-        try {
-            Double.parseDouble(str);
-            return true;
-        } catch (NumberFormatException e) {
-            return false;
-        }
+        // the same wrapping a predicate written inside ${ } gets, so the two cannot drift (CAMEL-24920)
+        return SimpleSyntaxHints.wrapFunctions(conditionText);
     }
 
     /**
      * Find the index of the ternary operator character, skipping nested ${}, quotes, etc.
      */
+    private static boolean surroundedByWhitespace(String text, int index) {
+        return index > 0 && index < text.length() - 1
+                && Character.isWhitespace(text.charAt(index - 1)) && Character.isWhitespace(text.charAt(index + 1));
+    }
+
     private int findTernaryOperator(String text, char operator) {
         int depth = 0;
         boolean inSingleQuote = false;
@@ -390,7 +371,9 @@ public class SimpleFunctionStart extends BaseSimpleNode implements BlockStart {
                     inDoubleQuote = true;
                     continue;
                 }
-                if (c == operator && depth == 0) {
+                if (c == operator && depth == 0 && surroundedByWhitespace(text, i)) {
+                    // like the tokenizer, the operator must have whitespace around it,
+                    // so ${bean:svc?method=at(10:30)} is not a ternary
                     return i;
                 }
             } else if (inSingleQuote && c == '\'') {
@@ -483,225 +466,4 @@ public class SimpleFunctionStart extends BaseSimpleNode implements BlockStart {
             return false;
         }
     }
-
-    @Override
-    public String createCode(CamelContext camelContext, String expression) throws SimpleParserException {
-        // Check if the block contains ternary expression nodes - if so, process them first
-        if (containsTernaryExpressionNodes()) {
-            return doCreateTernaryCode(camelContext, expression);
-        }
-
-        String answer;
-        // a function can either be a simple literal function or contain nested functions
-        if (block.getChildren().size() == 1 && block.getChildren().get(0) instanceof LiteralNode) {
-            answer = doCreateLiteralCode(camelContext, expression);
-        } else {
-            answer = doCreateCompositeCode(camelContext, expression);
-        }
-        return answer;
-    }
-
-    /**
-     * Create code from a block that contains ternary expression nodes. This handles the pattern: condition ? trueValue
-     * : falseValue
-     */
-    private String doCreateTernaryCode(CamelContext camelContext, String expression) {
-        List<SimpleNode> children = block.getChildren();
-
-        // Find the ? operator
-        int questionIdx = -1;
-        for (int i = 0; i < children.size(); i++) {
-            SimpleNode child = children.get(i);
-            if (child instanceof TernaryExpression && "?".equals(child.getToken().getText())) {
-                questionIdx = i;
-                break;
-            }
-        }
-
-        if (questionIdx < 0) {
-            // No ? found, fall back to composite code
-            return doCreateCompositeCode(camelContext, expression);
-        }
-
-        // Find the : operator after the ?
-        int colonIdx = -1;
-        for (int i = questionIdx + 1; i < children.size(); i++) {
-            SimpleNode child = children.get(i);
-            if (child instanceof TernaryExpression && ":".equals(child.getToken().getText())) {
-                colonIdx = i;
-                break;
-            }
-        }
-
-        if (colonIdx < 0) {
-            throw new SimpleParserException(
-                    "Ternary operator ? must be followed by :", children.get(questionIdx).getToken().getIndex());
-        }
-
-        // Extract condition, true value, and false value nodes
-        List<SimpleNode> conditionNodes = children.subList(0, questionIdx);
-        List<SimpleNode> trueNodes = children.subList(questionIdx + 1, colonIdx);
-        List<SimpleNode> falseNodes = children.subList(colonIdx + 1, children.size());
-
-        // Build the text from nodes
-        String conditionText = buildTextFromNodes(conditionNodes, camelContext);
-        String trueText = buildTextFromNodes(trueNodes, camelContext);
-        String falseText = buildTextFromNodes(falseNodes, camelContext);
-
-        // Wrap the condition for predicate parsing
-        String predicateText = wrapFunctionsInCondition(conditionText.trim());
-
-        // Parse the condition as a predicate and generate code
-        SimplePredicateParser predicateParser
-                = new SimplePredicateParser(camelContext, predicateText, true, skipFileFunctions, null);
-        String conditionCode = predicateParser.parseCode();
-
-        // Parse the true and false values as expressions and generate code
-        String trueCode = parseValueCode(camelContext, trueText.trim());
-        String falseCode = parseValueCode(camelContext, falseText.trim());
-
-        return BaseSimpleParser.CODE_START + "ternary(exchange, " + conditionCode + ", " + trueCode + ", " + falseCode
-               + ")" + BaseSimpleParser.CODE_END;
-    }
-
-    private String doCreateLiteralCode(CamelContext camelContext, String expression) {
-        LiteralNode literal = (LiteralNode) block.getChildren().get(0);
-        String text = literal.getText();
-
-        // Check if this is a ternary expression
-        String ternaryCode = tryParseTernaryCode(camelContext, text);
-        if (ternaryCode != null) {
-            return ternaryCode;
-        }
-
-        SimpleFunctionExpression function = new SimpleFunctionExpression(this.getToken(), cacheExpression, skipFileFunctions);
-        function.addText(text);
-        return function.createCode(camelContext, expression);
-    }
-
-    /**
-     * Try to parse the text as a ternary expression and generate code. Returns null if the text is not a ternary
-     * expression.
-     */
-    private String tryParseTernaryCode(CamelContext camelContext, String text) {
-        // Find the ? operator (not inside quotes or nested ${})
-        int questionIdx = findTernaryOperator(text, '?');
-        if (questionIdx < 0) {
-            return null;
-        }
-
-        // Find the : operator after the ?
-        int colonIdx = findTernaryOperator(text.substring(questionIdx + 1), ':');
-        if (colonIdx < 0) {
-            return null;
-        }
-        colonIdx = questionIdx + 1 + colonIdx;
-
-        // Extract the three parts
-        String conditionText = text.substring(0, questionIdx).trim();
-        String trueText = text.substring(questionIdx + 1, colonIdx).trim();
-        String falseText = text.substring(colonIdx + 1).trim();
-
-        if (conditionText.isEmpty() || trueText.isEmpty() || falseText.isEmpty()) {
-            return null;
-        }
-
-        // The condition text needs to be wrapped with ${} for parsing
-        String predicateText = wrapFunctionsInCondition(conditionText);
-
-        // Parse the condition as a predicate and generate code
-        SimplePredicateParser predicateParser
-                = new SimplePredicateParser(camelContext, predicateText, true, skipFileFunctions, null);
-        String conditionCode = predicateParser.parseCode();
-
-        // Parse the true and false values as expressions and generate code
-        String trueCode = parseValueCode(camelContext, trueText);
-        String falseCode = parseValueCode(camelContext, falseText);
-
-        return BaseSimpleParser.CODE_START + "ternary(exchange, " + conditionCode + ", " + trueCode + ", " + falseCode
-               + ")" + BaseSimpleParser.CODE_END;
-    }
-
-    /**
-     * Parse a value as code. Handles quoted literals, functions, and null.
-     */
-    private String parseValueCode(CamelContext camelContext, String text) {
-        // Handle quoted strings - return as string literal
-        if ((text.startsWith("'") && text.endsWith("'")) || (text.startsWith("\"") && text.endsWith("\""))) {
-            String value = text.substring(1, text.length() - 1);
-            return "\"" + value + "\"";
-        }
-
-        // Handle null
-        if ("null".equals(text) || "${null}".equals(text)) {
-            return "null";
-        }
-
-        // Check if this is a nested ternary expression
-        String nestedTernary = tryParseTernaryCode(camelContext, text);
-        if (nestedTernary != null) {
-            // Remove the CODE_START and CODE_END markers for nested expressions
-            String code = nestedTernary.replace(BaseSimpleParser.CODE_START, "").replace(BaseSimpleParser.CODE_END, "");
-            return code;
-        }
-
-        // Handle function expressions (may or may not have ${})
-        String expText = text;
-        if (!text.startsWith("${")) {
-            expText = "${" + text + "}";
-        }
-        SimpleExpressionParser parser
-                = new SimpleExpressionParser(camelContext, expText, true, skipFileFunctions, null);
-        String code = parser.parseCode();
-        // Remove the CODE_START and CODE_END markers
-        code = code.replace(BaseSimpleParser.CODE_START, "").replace(BaseSimpleParser.CODE_END, "");
-        return code;
-    }
-
-    private String doCreateCompositeCode(CamelContext camelContext, String expression) {
-        StringBuilder sb = new StringBuilder(256);
-        boolean quoteEmbeddedFunctions = false;
-
-        // we need to concat the block, so we have the expression
-        for (SimpleNode child : block.getChildren()) {
-            if (child instanceof LiteralNode literal) {
-                String text = literal.getText();
-                sb.append(text);
-                quoteEmbeddedFunctions |= literal.quoteEmbeddedNodes();
-                // if its quoted literal then embed that as text
-            } else if (child instanceof SingleQuoteStart || child instanceof DoubleQuoteStart) {
-                try {
-                    // pass in null when we evaluate the nested expressions
-                    String text = child.createCode(camelContext, null);
-                    if (text != null) {
-                        if (quoteEmbeddedFunctions && !StringHelper.isQuoted(text)) {
-                            sb.append("'").append(text).append("'");
-                        } else {
-                            sb.append(text);
-                        }
-                    }
-                } catch (SimpleParserException e) {
-                    // must rethrow parser exception as illegal syntax with details about the location
-                    throw new SimpleIllegalSyntaxException(expression, e.getIndex(), e.getMessage(), e);
-                }
-            } else if (child instanceof SimpleFunctionStart) {
-                // inlined function
-                String inlined = child.createCode(camelContext, expression);
-                sb.append(inlined);
-            }
-        }
-
-        // we have now concat the block as a String which contains inlined functions parsed
-        // so now we should reparse as a single function
-        String exp = sb.toString();
-        SimpleFunctionExpression function = new SimpleFunctionExpression(token, cacheExpression, skipFileFunctions);
-        function.addText(exp);
-        try {
-            return function.createCode(camelContext, exp);
-        } catch (SimpleParserException e) {
-            // must rethrow parser exception as illegal syntax with details about the location
-            throw new SimpleIllegalSyntaxException(expression, e.getIndex(), e.getMessage(), e);
-        }
-    }
-
 }

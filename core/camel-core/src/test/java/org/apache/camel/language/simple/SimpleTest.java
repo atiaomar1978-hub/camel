@@ -642,6 +642,14 @@ public class SimpleTest extends LanguageTestSupport {
     }
 
     @Test
+    public void testExceptionStacktraceNoException() {
+        // CAMEL-24651
+        String out = context.resolveLanguage("simple").createExpression("${exception.stacktrace}").evaluate(exchange,
+                String.class);
+        assertNull(out);
+    }
+
+    @Test
     public void testException() {
         exchange.setException(new IllegalArgumentException("Just testing"));
 
@@ -856,7 +864,7 @@ public class SimpleTest extends LanguageTestSupport {
         // exchange scoped
         assertExpression("${variableAs('cheese', 'String')}", "gauda");
         assertExpression("${variableAs('foo', 'int')}", null);
-        assertExpression("${variableAA('bar', 'int')}", null);
+        assertExpression("${variableAs('bar', 'int')}", null);
 
         // global scoped
         assertExpression("${variableAs('global:cheese', 'String')}", "gorgonzola");
@@ -930,13 +938,13 @@ public class SimpleTest extends LanguageTestSupport {
                 () -> assertExpression("hey ${xxx} how are you?", ""),
                 "Should have thrown an exception");
 
-        assertTrue(e1.getMessage().startsWith("Unknown function: xxx at location 4"));
+        assertTrue(e1.getMessage().startsWith("Unknown function: xxx"));
 
         ExpressionIllegalSyntaxException e2 = assertThrows(ExpressionIllegalSyntaxException.class,
                 () -> assertExpression("${xxx}", ""),
                 "Should have thrown an exception");
 
-        assertTrue(e2.getMessage().startsWith("Unknown function: xxx at location 0"));
+        assertTrue(e2.getMessage().startsWith("Unknown function: xxx"));
 
         ExpressionIllegalSyntaxException e3 = assertThrows(ExpressionIllegalSyntaxException.class,
                 () -> assertExpression("${bodyAs(xxx}", ""),
@@ -1854,6 +1862,15 @@ public class SimpleTest extends LanguageTestSupport {
         assertExpression("${substring(0,-99)}", "");
         assertExpression("${substring(99,0)}", "");
         assertExpression("${substring(0,0)}", "ABCDEFGHIJK");
+        // the sign of the tail does not matter
+        assertExpression("${substring(3,-2)}", "DEFGHI");
+        assertExpression("${substring(3,2)}", "DEFGHI");
+
+        // the examples in the simple catalog
+        exchange.getMessage().setBody("Hello World");
+        assertExpression("${substring(6)}", "World");
+        assertExpression("${substring(-6)}", "Hello");
+        assertExpression("${substring(1,-1)}", "ello Worl");
 
         exchange.getMessage().setBody("Hello World");
         exchange.getMessage().setHeader("foo", "1234567890");
@@ -2194,9 +2211,38 @@ public class SimpleTest extends LanguageTestSupport {
         s = expression.evaluate(exchange, String.class);
         assertNotNull(s);
 
+        // empty parentheses and any case of the kind
+        expression = context.resolveLanguage("simple").createExpression("${uuid()}");
+        s = expression.evaluate(exchange, String.class);
+        assertNotNull(s);
+
+        expression = context.resolveLanguage("simple").createExpression("${uuid(Short)}");
+        s = expression.evaluate(exchange, String.class);
+        assertNotNull(s);
+
         // custom generator
         context.getRegistry().bind("mygen", (UuidGenerator) () -> "1234");
         assertExpression("${uuid(mygen)}", "1234");
+    }
+
+    @Test
+    public void testCollectionFunctionsOnASingleComma() {
+        exchange.getMessage().setBody(",");
+        assertExpression("${isEmpty()}", true);
+    }
+
+    @Test
+    public void testNullNumberArguments() {
+        Exception e = assertThrows(Exception.class, () -> evaluate("${collate(${header.none})}"));
+        assertTrue(e.getMessage().contains("collate number expression evaluated to null"), e.getMessage());
+        e = assertThrows(Exception.class, () -> evaluate("${range(1,${header.none})}"));
+        assertTrue(e.getMessage().contains("range expression evaluated to null"), e.getMessage());
+        e = assertThrows(Exception.class, () -> evaluate("${random(5,5)}"));
+        assertTrue(e.getMessage().contains("requires max to be greater than min"), e.getMessage());
+    }
+
+    private Object evaluate(String text) {
+        return context.resolveLanguage("simple").createExpression(text).evaluate(exchange, Object.class);
     }
 
     @Test

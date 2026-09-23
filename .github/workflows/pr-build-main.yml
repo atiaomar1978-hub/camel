@@ -22,7 +22,7 @@ on:
     branches:
       - main
     # CI-only changes don't need a full build. Use workflow_dispatch to
-    # test CI changes: gh workflow run "Build and test" -f pr_number=XXXX -f pr_ref=branch-name
+    # test CI changes: gh workflow run "Build and test" -f pr_number=XXXX -f pr_ref=refs/pull/XXXX/head
     paths-ignore:
       - .claude-plugin/**
       - .idea/**
@@ -41,7 +41,7 @@ on:
         required: true
         type: string
       pr_ref:
-        description: 'Git ref of the pull request branch'
+        description: 'Git ref of the pull request (e.g. refs/pull/XXXX/head)'
         required: true
         type: string
       extra_modules:
@@ -92,7 +92,7 @@ jobs:
           # Scalpel is observational — fetch failures must not break the build.
           BASE_REF="${GITHUB_BASE_REF:-main}"
           for depth in 50 200 1000; do
-            git fetch --deepen=$depth 2>/dev/null || true
+            git fetch --no-tags --deepen=$depth origin ${BASE_REF} 2>/dev/null || true
             git fetch --no-tags --depth=$depth origin "${BASE_REF}:refs/remotes/origin/${BASE_REF}" 2>/dev/null || true
             if git merge-base HEAD "origin/${BASE_REF}" >/dev/null 2>&1; then
               echo "Merge base reachable at depth $depth"
@@ -103,7 +103,7 @@ jobs:
           # If still not reachable, fetch full history as last resort
           if ! git merge-base HEAD "origin/${BASE_REF}" >/dev/null 2>&1; then
             echo "Merge base still not reachable, fetching full history"
-            git fetch --unshallow 2>/dev/null || true
+            git fetch --no-tags --unshallow origin ${BASE_REF} 2>/dev/null || true
             git fetch --no-tags origin "${BASE_REF}:refs/remotes/origin/${BASE_REF}" 2>/dev/null || true
           fi
       - id: install-packages
@@ -111,7 +111,7 @@ jobs:
       - id: install-mvnd
         uses: ./.github/actions/install-mvnd
       - name: Set up JDK ${{ matrix.java }}
-        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: 'temurin'
           java-version: ${{ matrix.java }}
@@ -161,7 +161,35 @@ jobs:
         if: ${{ !inputs.skip_full_build }}
         shell: bash
         run: |
-          [[ -z $(git status --porcelain) ]] || { echo 'There are uncommitted changes'; git status; echo; echo; git diff; exit 1; }
+          if [[ -z $(git status --porcelain) ]]; then
+            exit 0
+          fi
+          echo 'There are uncommitted changes'
+          git status
+          echo
+          echo
+          git diff
+          # Save the regenerated changes as a patch (with the PR number, since
+          # the ci-comment artifact is not produced on this failure path) so
+          # they can be applied to the PR branch without re-running the regen
+          # build locally. The commenter workflow posts apply instructions.
+          git add -A
+          mkdir -p regen-patch-artifact
+          git diff --cached --binary > regen-patch-artifact/regen.patch
+          echo "${{ github.event.number || inputs.pr_number }}" > regen-patch-artifact/pr-number
+          exit 1
+      # Both non-experimental matrix entries regenerate the same files, so the
+      # patch content is identical across JDKs — last writer wins, same as the
+      # ci-comment artifact below.
+      - name: Upload regen patch artifact
+        if: >
+          failure() && !matrix.experimental &&
+          hashFiles('regen-patch-artifact/regen.patch') != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: regen-patch
+          path: regen-patch-artifact/
+          overwrite: true
       - name: mvn test
         uses: ./.github/actions/incremental-build
         with:

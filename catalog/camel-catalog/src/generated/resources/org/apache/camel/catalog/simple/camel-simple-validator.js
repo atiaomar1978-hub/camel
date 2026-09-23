@@ -62,6 +62,7 @@ const FUNCTIONS = {
   'distinct': true,
   'empty': true,
   'env': true,
+  'escape': true,
   'exchange': true,
   'exchangeId': true,
   'exchangeProperty': true,
@@ -75,7 +76,8 @@ const FUNCTIONS = {
   'header': true,
   'headerAs': true,
   'headers': true,
-  'hostName': true,
+  'hostname': true,
+  'logExchange': true,
   'htmlClean': true,
   'htmlDecode': true,
   'htmlParse': true,
@@ -127,8 +129,9 @@ const FUNCTIONS = {
   'routeGroup': true,
   'routeId': true,
   'safeQuote': true,
-  'setVariable': true,
+  'setAttachment': true,
   'setHeader': true,
+  'setVariable': true,
   'shuffle': true,
   'simpleJsonpath': true,
   'size': true,
@@ -182,6 +185,8 @@ const OPERATORS = {
   '!startsWith': { kind: 'binary', description: 'Tests whether the left operand string does not start with the right operand string.' },
   'endsWith': { kind: 'binary', description: 'Tests whether the left operand string ends with the right operand string.' },
   '!endsWith': { kind: 'binary', description: 'Tests whether the left operand string does not end with the right operand string.' },
+  'equals': { kind: 'binary', description: 'Tests whether the left operand string equals the right operand string, compared as text without numeric coercion.' },
+  '!equals': { kind: 'binary', description: 'Tests whether the left operand string does not equal the right operand string, compared as text without numeric coercion.' },
   '++': { kind: 'unary', description: 'Increments the numeric value by one. Must immediately follow a function closing brace.' },
   '--': { kind: 'unary', description: 'Decrements the numeric value by one. Must immediately follow a function closing brace.' },
   '&&': { kind: 'logical', description: 'Logical AND. Both left and right predicates must evaluate to true.' },
@@ -189,7 +194,9 @@ const OPERATORS = {
   '? :': { kind: 'ternary', description: 'Ternary conditional operator. Evaluates the predicate and returns trueValue if true, falseValue if false. Requires spaces around both ? and : tokens.' },
   '~>': { kind: 'chain', description: 'Pipes the result of the left expression as input body to the right expression. Use $param in the right expression to reference the piped value explicitly.' },
   '?~>': { kind: 'chain', description: 'Null-safe chain operator. Same as ~> but stops chaining and returns null if the left expression evaluates to null.' },
-  '?:': { kind: 'other', description: 'Elvis operator (null-coalescing). Returns the left operand if it is not null/empty, otherwise returns the right operand as a fallback value.' }
+  '?:': { kind: 'other', description: 'Elvis operator (null-coalescing). Returns the left operand if it is not null/empty, otherwise returns the right operand as a fallback value.' },
+  ':=': { kind: 'init', description: 'Assigns a local variable in the init block at the top of an expression ($init{ ... }init$), computed once and used in the expression as ${name}. Each statement ends with a semicolon and a new line.' },
+  '~:=': { kind: 'init', description: 'Declares a local custom function in the init block at the top of an expression ($init{ ... }init$), usually as a chain of functions on the input, called as ${name()} (the message body as input), ${name(exp)} (an explicit input) or from another function as ${function(name)}. Each statement ends with a semicolon and a new line.' }
 };
 
 

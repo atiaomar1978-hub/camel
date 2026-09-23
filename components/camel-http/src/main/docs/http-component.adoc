@@ -431,10 +431,10 @@ Spring XML
 [source,xml]
 ----
 <camelContext>
-    <properties>
-        <property key="http.proxyHost" value="172.168.18.9"/>
-        <property key="http.proxyPort" value="8080"/>
-   </properties>
+    <globalOptions>
+        <globalOption key="http.proxyHost" value="172.168.18.9"/>
+        <globalOption key="http.proxyPort" value="8080"/>
+    </globalOptions>
 </camelContext>
 ----
 
@@ -678,6 +678,14 @@ Camel only provides support for OAuth2 client credentials flow
 [IMPORTANT]
 Camel does not perform any validation in access token. It's up to the underlying service to validate it.
 
+=== Vault-backed credential rotation
+
+When using vault-backed property placeholders (e.g. `{{aws:mySecret/password}}`) with
+`DefaultContextReloadStrategy`, rotated credentials are picked up automatically because Camel rebuilds
+all routes and their endpoints from the updated component configuration after each reload event.
+No special configuration is needed for `camel-http`: the fresh endpoints created during the route
+restart carry the newly resolved credentials.
+
 === Advanced Usage
 
 If you need more control over the HTTP producer, you should use the
@@ -786,7 +794,7 @@ If you are doing this using the Spring DSL, you can specify your
  class="my.https.HttpClientConfigurer">
 </bean>
 
-<to uri="https://myhostname.com:443/myURL?httpClientConfigurer=myHttpClientConfigurer"/>
+<to uri="https://myhostname.com:443/myURL?httpClientConfigurer=#myHttpClientConfigurer"/>
 ----
 
 As long as you implement the `HttpClientConfigurer` and configure your
@@ -846,7 +854,7 @@ public class HttpContextFactory {
 ._XML-only: endpoint URI referencing the `HttpContext` bean_
 [source,xml]
 ----
-<to uri="https://myhostname.com:443/myURL?httpContext=myHttpContext"/>
+<to uri="https://myhostname.com:443/myURL?httpContext=#myHttpContext"/>
 ----
 
 [[HTTP-UsingdifferentSSLContextParameters]]

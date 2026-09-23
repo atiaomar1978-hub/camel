@@ -101,6 +101,26 @@ public interface Langchain4jAgentComponentBuilderFactory {
             return this;
         }
     
+        
+        /**
+         * Whether LangChain4j should compensate when a tool execution fails.
+         * Only supported in inline agent creation mode (agentConfiguration
+         * without agent or agentFactory). URI value overrides the same option
+         * on the agentConfiguration bean.
+         * 
+         * The option is a: &lt;code&gt;java.lang.Boolean&lt;/code&gt; type.
+         * 
+         * Default: false
+         * Group: producer
+         * 
+         * @param compensateOnToolErrors the value to set
+         * @return the dsl builder
+         */
+        default Langchain4jAgentComponentBuilder compensateOnToolErrors(java.lang.Boolean compensateOnToolErrors) {
+            doSetProperty("compensateOnToolErrors", compensateOnToolErrors);
+            return this;
+        }
+    
         /**
          * The configuration.
          * 
@@ -114,6 +134,27 @@ public interface Langchain4jAgentComponentBuilderFactory {
          */
         default Langchain4jAgentComponentBuilder configuration(org.apache.camel.component.langchain4j.agent.LangChain4jAgentConfiguration configuration) {
             doSetProperty("configuration", configuration);
+            return this;
+        }
+    
+        
+        /**
+         * Whether multiple tools requested in a single LLM turn are executed
+         * concurrently. Camel route tools run on isolated exchange copies. Only
+         * supported in inline agent creation mode (agentConfiguration without
+         * agent or agentFactory). URI value overrides the same option on the
+         * agentConfiguration bean.
+         * 
+         * The option is a: &lt;code&gt;java.lang.Boolean&lt;/code&gt; type.
+         * 
+         * Default: false
+         * Group: producer
+         * 
+         * @param executeToolsConcurrently the value to set
+         * @return the dsl builder
+         */
+        default Langchain4jAgentComponentBuilder executeToolsConcurrently(java.lang.Boolean executeToolsConcurrently) {
+            doSetProperty("executeToolsConcurrently", executeToolsConcurrently);
             return this;
         }
     
@@ -160,6 +201,26 @@ public interface Langchain4jAgentComponentBuilderFactory {
          */
         default Langchain4jAgentComponentBuilder lazyStartProducer(boolean lazyStartProducer) {
             doSetProperty("lazyStartProducer", lazyStartProducer);
+            return this;
+        }
+    
+        /**
+         * Maximum number of tool-calling round trips allowed per request. Each
+         * round trip is one LLM call plus execution of the tools requested in
+         * that call. Set to 0 to leave unset and use the LangChain4j default.
+         * Only supported in inline agent creation mode (agentConfiguration
+         * without agent or agentFactory). URI value overrides the same option
+         * on the agentConfiguration bean.
+         * 
+         * The option is a: &lt;code&gt;int&lt;/code&gt; type.
+         * 
+         * Group: producer
+         * 
+         * @param maxToolCallingRoundTrips the value to set
+         * @return the dsl builder
+         */
+        default Langchain4jAgentComponentBuilder maxToolCallingRoundTrips(int maxToolCallingRoundTrips) {
+            doSetProperty("maxToolCallingRoundTrips", maxToolCallingRoundTrips);
             return this;
         }
     
@@ -242,12 +303,12 @@ public interface Langchain4jAgentComponentBuilderFactory {
     
         /**
          * MCP server definitions in the form of mcpServer..=. Supported
-         * properties: transportType (stdio, http, streamableHttp, or sse,
-         * default: stdio), command (comma-separated, for stdio), url (for
-         * http/sse), environment.= (for stdio), timeout (in seconds, default:
-         * 60), logRequests, logResponses, oauthProfile (OAuth profile for HTTP
-         * auth, requires camel-oauth). This is a multi-value option with
-         * prefix: mcpServer.
+         * properties: transportType (stdio, http or streamableHttp, default:
+         * stdio), command (comma-separated, for stdio), url (for
+         * http/streamableHttp), environment.= (for stdio), timeout (in seconds,
+         * default: 60), logRequests, logResponses, oauthProfile (OAuth profile
+         * for HTTP auth, requires camel-oauth). This is a multi-value option
+         * with prefix: mcpServer.
          * 
          * The option is a: &lt;code&gt;java.util.Map&amp;lt;java.lang.String,
          * java.lang.Object&amp;gt;&lt;/code&gt; type.
@@ -259,6 +320,147 @@ public interface Langchain4jAgentComponentBuilderFactory {
          */
         default Langchain4jAgentComponentBuilder mcpServer(java.util.Map<java.lang.String, java.lang.Object> mcpServer) {
             doSetProperty("mcpServer", mcpServer);
+            return this;
+        }
+    
+        /**
+         * The URL of the provider's API (http://localhost:11434 for a local
+         * Ollama), when the model is created from the provider. The provider's
+         * default when not set.
+         * 
+         * The option is a: &lt;code&gt;java.lang.String&lt;/code&gt; type.
+         * 
+         * Group: model
+         * 
+         * @param baseUrl the value to set
+         * @return the dsl builder
+         */
+        default Langchain4jAgentComponentBuilder baseUrl(java.lang.String baseUrl) {
+            doSetProperty("baseUrl", baseUrl);
+            return this;
+        }
+    
+        /**
+         * The name of the model at the provider (qwen2.5, gpt-4o-mini, ...),
+         * when the model is created from the provider.
+         * 
+         * The option is a: &lt;code&gt;java.lang.String&lt;/code&gt; type.
+         * 
+         * Group: model
+         * 
+         * @param modelName the value to set
+         * @return the dsl builder
+         */
+        default Langchain4jAgentComponentBuilder modelName(java.lang.String modelName) {
+            doSetProperty("modelName", modelName);
+            return this;
+        }
+    
+        /**
+         * The LangChain4j provider of the chat model that drives the agent, to
+         * create the model from the options here (modelName, baseUrl, apiKey,
+         * temperature, timeout, and provider-specific model. properties)
+         * instead of a AgentConfiguration bean. The LangChain4j module of the
+         * provider (dev.langchain4j:langchain4j-ollama, ...) must be on the
+         * classpath; Camel JBang downloads it. Ignored when a
+         * AgentConfiguration is configured. For a provider not listed, set
+         * customProvider instead.
+         * 
+         * The option is a: &lt;code&gt;java.lang.String&lt;/code&gt; type.
+         * 
+         * Group: model
+         * 
+         * @param provider the value to set
+         * @return the dsl builder
+         */
+        default Langchain4jAgentComponentBuilder provider(java.lang.String provider) {
+            doSetProperty("provider", provider);
+            return this;
+        }
+    
+        /**
+         * The sampling temperature of the model, when the model is created from
+         * the provider.
+         * 
+         * The option is a: &lt;code&gt;java.lang.Double&lt;/code&gt; type.
+         * 
+         * Group: model
+         * 
+         * @param temperature the value to set
+         * @return the dsl builder
+         */
+        default Langchain4jAgentComponentBuilder temperature(java.lang.Double temperature) {
+            doSetProperty("temperature", temperature);
+            return this;
+        }
+    
+        /**
+         * The request timeout of the model (30s, 2m), when the model is created
+         * from the provider.
+         * 
+         * The option is a: &lt;code&gt;java.time.Duration&lt;/code&gt; type.
+         * 
+         * Group: model
+         * 
+         * @param timeout the value to set
+         * @return the dsl builder
+         */
+        default Langchain4jAgentComponentBuilder timeout(java.time.Duration timeout) {
+            doSetProperty("timeout", timeout);
+            return this;
+        }
+    
+        /**
+         * The fully qualified class name of the LangChain4j model class of a
+         * provider that is not listed in provider
+         * (dev.langchain4j.model.jlama.JlamaChatModel), created from the
+         * options here through its builder() as a listed provider is. Set
+         * either provider or customProvider.
+         * 
+         * The option is a: &lt;code&gt;java.lang.String&lt;/code&gt; type.
+         * 
+         * Group: model (advanced)
+         * 
+         * @param customProvider the value to set
+         * @return the dsl builder
+         */
+        default Langchain4jAgentComponentBuilder customProvider(java.lang.String customProvider) {
+            doSetProperty("customProvider", customProvider);
+            return this;
+        }
+    
+        /**
+         * Provider-specific properties of the model, set on the model's builder
+         * as they are (model.numPredict=512 for Ollama, model.maxTokens=1024
+         * for OpenAI), when the model is created from the provider. This is a
+         * multi-value option with prefix: model.
+         * 
+         * The option is a: &lt;code&gt;java.util.Map&amp;lt;java.lang.String,
+         * java.lang.Object&amp;gt;&lt;/code&gt; type.
+         * 
+         * Group: model (advanced)
+         * 
+         * @param modelProperties the value to set
+         * @return the dsl builder
+         */
+        default Langchain4jAgentComponentBuilder modelProperties(java.util.Map<java.lang.String, java.lang.Object> modelProperties) {
+            doSetProperty("modelProperties", modelProperties);
+            return this;
+        }
+    
+        /**
+         * The API key or access token of the provider, when the model is
+         * created from the provider.
+         * 
+         * The option is a: &lt;code&gt;java.lang.String&lt;/code&gt; type.
+         * 
+         * Group: security
+         * 
+         * @param apiKey the value to set
+         * @return the dsl builder
+         */
+        default Langchain4jAgentComponentBuilder apiKey(java.lang.String apiKey) {
+            doSetProperty("apiKey", apiKey);
             return this;
         }
     }
@@ -285,14 +487,25 @@ public interface Langchain4jAgentComponentBuilderFactory {
             case "agent": getOrCreateConfiguration((LangChain4jAgentComponent) component).setAgent((org.apache.camel.component.langchain4j.agent.api.Agent) value); return true;
             case "agentConfiguration": getOrCreateConfiguration((LangChain4jAgentComponent) component).setAgentConfiguration((org.apache.camel.component.langchain4j.agent.api.AgentConfiguration) value); return true;
             case "agentFactory": getOrCreateConfiguration((LangChain4jAgentComponent) component).setAgentFactory((org.apache.camel.component.langchain4j.agent.api.AgentFactory) value); return true;
+            case "compensateOnToolErrors": getOrCreateConfiguration((LangChain4jAgentComponent) component).setCompensateOnToolErrors((java.lang.Boolean) value); return true;
             case "configuration": ((LangChain4jAgentComponent) component).setConfiguration((org.apache.camel.component.langchain4j.agent.LangChain4jAgentConfiguration) value); return true;
+            case "executeToolsConcurrently": getOrCreateConfiguration((LangChain4jAgentComponent) component).setExecuteToolsConcurrently((java.lang.Boolean) value); return true;
             case "jsonSchema": getOrCreateConfiguration((LangChain4jAgentComponent) component).setJsonSchema((java.lang.String) value); return true;
             case "lazyStartProducer": ((LangChain4jAgentComponent) component).setLazyStartProducer((boolean) value); return true;
+            case "maxToolCallingRoundTrips": getOrCreateConfiguration((LangChain4jAgentComponent) component).setMaxToolCallingRoundTrips((int) value); return true;
             case "outputClass": getOrCreateConfiguration((LangChain4jAgentComponent) component).setOutputClass((java.lang.Class) value); return true;
             case "tags": getOrCreateConfiguration((LangChain4jAgentComponent) component).setTags((java.lang.String) value); return true;
             case "autowiredEnabled": ((LangChain4jAgentComponent) component).setAutowiredEnabled((boolean) value); return true;
             case "mcpClients": getOrCreateConfiguration((LangChain4jAgentComponent) component).setMcpClients((java.util.List) value); return true;
             case "mcpServer": getOrCreateConfiguration((LangChain4jAgentComponent) component).setMcpServer((java.util.Map) value); return true;
+            case "baseUrl": getOrCreateConfiguration((LangChain4jAgentComponent) component).setBaseUrl((java.lang.String) value); return true;
+            case "modelName": getOrCreateConfiguration((LangChain4jAgentComponent) component).setModelName((java.lang.String) value); return true;
+            case "provider": getOrCreateConfiguration((LangChain4jAgentComponent) component).setProvider((java.lang.String) value); return true;
+            case "temperature": getOrCreateConfiguration((LangChain4jAgentComponent) component).setTemperature((java.lang.Double) value); return true;
+            case "timeout": getOrCreateConfiguration((LangChain4jAgentComponent) component).setTimeout((java.time.Duration) value); return true;
+            case "customProvider": getOrCreateConfiguration((LangChain4jAgentComponent) component).setCustomProvider((java.lang.String) value); return true;
+            case "modelProperties": getOrCreateConfiguration((LangChain4jAgentComponent) component).setModelProperties((java.util.Map) value); return true;
+            case "apiKey": getOrCreateConfiguration((LangChain4jAgentComponent) component).setApiKey((java.lang.String) value); return true;
             default: return false;
             }
         }
