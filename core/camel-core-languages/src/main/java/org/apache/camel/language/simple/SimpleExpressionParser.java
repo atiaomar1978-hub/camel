@@ -17,7 +17,6 @@
 package org.apache.camel.language.simple;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -81,31 +80,8 @@ public class SimpleExpressionParser extends BaseSimpleParser {
             if (SimpleInitBlockTokenizer.hasInitBlock(expression)) {
                 SimpleInitBlockParser initParser
                         = new SimpleInitBlockParser(camelContext, expression, allowEscape, skipFileFunctions, cacheExpression);
-                // the init block should be parsed in predicate mode as that is needed to fully parse with all the operators and functions
                 init = initParser.parseExpression();
-                String part = StringHelper.after(expression, SimpleInitBlockTokenizer.INIT_END);
-                if (part.startsWith("\n")) {
-                    // skip newline after ending init block
-                    part = part.substring(1);
-                }
-                this.expression = part;
-                // use $$key as local variable in the expression afterwards.
-                // Sort by descending length so a longer key (e.g. "$ab") is replaced before any
-                // shorter prefix (e.g. "$a"), preventing "$ab" from becoming "${variable.a}b".
-                List<String> sortedKeys = new ArrayList<>(initParser.getInitKeys());
-                sortedKeys.sort(Comparator.comparingInt(String::length).reversed());
-                for (String key : sortedKeys) {
-                    this.expression = this.expression.replace("$" + key, "${variable." + key + "}");
-                }
-                // use $$key() as local function in the expression afterwards
-                List<String> sortedFunctions = new ArrayList<>(initParser.getInitFunctions());
-                sortedFunctions.sort(Comparator.comparingInt(String::length).reversed());
-                for (String key : sortedFunctions) {
-                    // no-arg functions
-                    this.expression = this.expression.replace("$" + key + "()", "${function(" + key + ")}");
-                    // arg functions
-                    this.expression = this.expression.replace("${" + key + "(", "${function(" + key + ",");
-                }
+                this.expression = initParser.rewriteExpressionAfterInitBlock(expression);
             }
 
             // parse simple expression
@@ -125,23 +101,8 @@ public class SimpleExpressionParser extends BaseSimpleParser {
         }
     }
 
-    public String parseCode() {
-        try {
-            parseTokens();
-            return doParseCode();
-        } catch (SimpleParserException e) {
-            // catch parser exception and turn that into a syntax exceptions
-            throw new SimpleIllegalSyntaxException(expression, e.getIndex(), e.getMessage(), e);
-        } catch (Exception e) {
-            // include exception in rethrown exception
-            throw new SimpleIllegalSyntaxException(expression, -1, e.getMessage(), e);
-        }
-    }
-
     /**
      * First step parsing into a list of nodes.
-     *
-     * This is used as SPI for camel-csimple to do AST transformation and parse into java source code.
      */
     protected List<SimpleNode> parseTokens() {
         clear();
@@ -333,37 +294,6 @@ public class SimpleExpressionParser extends BaseSimpleParser {
         return answer;
     }
 
-    /**
-     * Second step parsing into code
-     */
-    protected String doParseCode() {
-        StringBuilder sb = new StringBuilder(256);
-        boolean firstIsLiteral = false;
-        for (SimpleNode node : nodes) {
-            String exp = node.createCode(camelContext, expression);
-            if (exp != null) {
-                if (sb.isEmpty() && node instanceof LiteralNode) {
-                    firstIsLiteral = true;
-                }
-                if (!sb.isEmpty()) {
-                    // okay we append together and this requires that the first node to be literal
-                    if (!firstIsLiteral) {
-                        // then insert an empty string + to force type into string so the compiler
-                        // can compile with the + function
-                        sb.insert(0, "\"\" + ");
-                    }
-                    sb.append(" + ");
-                }
-                parseLiteralNode(sb, node, exp);
-            }
-        }
-
-        String code = sb.toString();
-        code = code.replace(BaseSimpleParser.CODE_START, "");
-        code = code.replace(BaseSimpleParser.CODE_END, "");
-        return code;
-    }
-
     static void parseLiteralNode(StringBuilder sb, SimpleNode node, String exp) {
         if (node instanceof LiteralNode) {
             exp = StringHelper.removeLeadingAndEndingQuotes(exp);
@@ -446,7 +376,8 @@ public class SimpleExpressionParser extends BaseSimpleParser {
                 }
             } else {
                 throw new SimpleParserException(
-                        "Other operator " + operatorType + " does not support token " + token, token.getIndex());
+                        SimpleSyntaxHints.unsupportedOperand("Other", operatorType, expression, token.getIndex()),
+                        token.getIndex());
             }
             return true;
         }
@@ -476,7 +407,8 @@ public class SimpleExpressionParser extends BaseSimpleParser {
                 }
             } else {
                 throw new SimpleParserException(
-                        "Chain operator " + operatorType + " does not support token " + token, token.getIndex());
+                        SimpleSyntaxHints.unsupportedOperand("Chain", operatorType, expression, token.getIndex()),
+                        token.getIndex());
             }
             return true;
         }

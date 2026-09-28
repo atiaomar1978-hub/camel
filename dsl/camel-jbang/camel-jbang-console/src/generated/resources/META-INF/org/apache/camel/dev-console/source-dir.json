@@ -6,6 +6,7 @@
     "title": "Source Directory",
     "description": "Information about Camel CLI source files",
     "deprecated": false,
+    "readOnly": true,
     "javaType": "org.apache.camel.jbang.console.SourceDirDevConsole",
     "groupId": "org.apache.camel",
     "artifactId": "camel-jbang-console",
@@ -25,6 +26,47 @@
       "autowired": false,
       "secret": false,
       "description": "Whether to show the source in the output"
+    }
+  },
+  "response": {
+    "type": "object",
+    "properties": {
+      "dir": {
+        "type": "string",
+        "description": "The source directory (only present when a reload strategy is active)"
+      },
+      "files": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "The file name"
+            },
+            "size": {
+              "type": "integer",
+              "description": "The file size in bytes"
+            },
+            "lastModified": {
+              "type": "integer",
+              "description": "Epoch time in milliseconds of the last modification"
+            },
+            "code": {
+              "type": "array",
+              "items": {
+                
+              },
+              "description": "The source code lines (only present when requested and available)"
+            }
+          },
+          "required": [
+            "size",
+            "lastModified"
+          ]
+        },
+        "description": "The files in the source directory (only present when the directory is not empty)"
+      }
     }
   }
 }

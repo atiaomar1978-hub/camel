@@ -50,6 +50,28 @@ Camel committers and experienced Camel contributors are may also use Maven Daemo
 To build Camel maven has to be configured to use more memory, which is done automatically via
 the `.mvn/jvm.config` file.
 
+[NOTE]
+====
+The build uses the Develocity Maven extension (`.mvn/extensions.xml`), which enables a *local*
+build cache by default (`.mvn/develocity.xml`) so incremental local builds can reuse unchanged
+module outputs. Remote caching is always disabled. If you rebuild a module and your changes don't
+seem to take effect -- for example a jar in `~/.m2` doesn't reflect a source change you just
+made -- disable the local cache for that build to force a real compile:
+
+[source,bash]
+----
+mvn clean install -Pfastinstall -Ddevelocity.cache.local.enabled=false
+----
+
+To disable it for every local build without changing the command line each time, set it once via
+an environment variable (e.g. in your shell profile):
+
+[source,bash]
+----
+export MAVEN_OPTS="$MAVEN_OPTS -Ddevelocity.cache.local.enabled=false"
+----
+====
+
 == A normal build
 
 Beware this runs all the unit tests which takes many hours.
@@ -138,3 +160,38 @@ For instance, if you do some code changes in the camel-ftp component, following 
 cd camel-ftp
 mvn clean install -Psourcecheck
 ----
+
+== Checking dependency hygiene
+
+The opt-in `-Pdep-check` profile leverages https://github.com/maveniverse/pilot[`pilot:dependencies`] for bytecode-level detection of *used-but-undeclared* and *unused-but-declared* dependencies.
+It is non-blocking by default (report mode), so it only prints findings without failing the build.
+
+The mojo requires compiled classes.
+Run `compile` first (test-scope analysis is skipped by default, since many modules depend on
+`camel-test-spring-junit6` which is not resolvable in a clean checkout without a prior install):
+
+[source,bash]
+----
+# Full reactor — report mode (default, compile-scope only)
+mvn compile eu.maveniverse.maven.plugins:pilot-plugin:0.4.0:dependencies -Pdep-check -Dpilot.skipTestScope=true -Dlicense.skip -Dquickly
+
+# Single module — includes test-scope (camel-test-spring-junit6 is available after a local install)
+mvn test-compile eu.maveniverse.maven.plugins:pilot-plugin:0.4.0:dependencies -Pdep-check
+----
+
+Or on a single module:
+
+[source,bash]
+----
+cd components/camel-ftp
+mvn compile eu.maveniverse.maven.plugins:pilot-plugin:0.4.0:dependencies -Pdep-check -Dpilot.skipTestScope=true
+----
+
+To fail the build on findings:
+
+[source,bash]
+----
+mvn compile eu.maveniverse.maven.plugins:pilot-plugin:0.4.0:dependencies -Pdep-check -Dpilot.skipTestScope=true -Dpilot.action=check
+----
+
+CI also runs this profile automatically on pull requests targeting `main` (see the *Dependency Analysis* workflow).

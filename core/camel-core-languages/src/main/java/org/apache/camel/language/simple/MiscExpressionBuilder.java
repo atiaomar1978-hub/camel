@@ -27,7 +27,6 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -149,6 +148,9 @@ public final class MiscExpressionBuilder {
             @Override
             public Object evaluate(Exchange exchange) {
                 Integer n = num.evaluate(exchange, Integer.class);
+                if (n == null) {
+                    throw new IllegalArgumentException("collate number expression evaluated to null: " + group);
+                }
                 Expression grouped = ExpressionBuilder.groupIteratorExpression(exp, null, Integer.toString(n), false);
                 grouped.init(exchange.getContext());
                 return grouped.evaluate(exchange, Object.class);
@@ -451,22 +453,7 @@ public final class MiscExpressionBuilder {
                 } else {
                     value = exchange.getMessage().getBody();
                 }
-                if (value != null) {
-                    Class<?> type = value.getClass();
-                    if (ObjectHelper.isNumericType(type)) {
-                        return "number";
-                    } else if (boolean.class == type || Boolean.class == type) {
-                        return "boolean";
-                    } else if (value instanceof CharSequence) {
-                        return "string";
-                    } else if (ObjectHelper.isPrimitiveArrayType(type) || value instanceof Collection
-                            || value instanceof Map<?, ?>) {
-                        return "array";
-                    } else {
-                        return "object";
-                    }
-                }
-                return "null";
+                return kindOfType(value);
             }
 
             @Override
@@ -725,8 +712,12 @@ public final class MiscExpressionBuilder {
 
             @Override
             public Object evaluate(Exchange exchange) {
-                int num1 = exp1.evaluate(exchange, Integer.class);
-                int num2 = exp2.evaluate(exchange, Integer.class);
+                Integer num1 = exp1.evaluate(exchange, Integer.class);
+                Integer num2 = exp2.evaluate(exchange, Integer.class);
+                if (num1 == null || num2 == null || num2 <= num1) {
+                    throw new IllegalArgumentException(
+                            "random(min,max) requires max to be greater than min, was: " + num1 + "," + num2);
+                }
                 Random random = new Random(); // NOSONAR
                 return random.nextInt(num2 - num1) + num1;
             }
@@ -813,19 +804,21 @@ public final class MiscExpressionBuilder {
 
             @Override
             public void init(CamelContext context) {
-                if ("classic".equalsIgnoreCase(generator)) {
+                // ${uuid()} is the same as ${uuid}
+                String kind = generator != null ? StringHelper.removeLeadingAndEndingQuotes(generator.trim()) : null;
+                if ("classic".equalsIgnoreCase(kind)) {
                     uuid = new ClassicUuidGenerator();
-                } else if ("short".equals(generator)) {
+                } else if ("short".equalsIgnoreCase(kind)) {
                     uuid = new ShortUuidGenerator();
-                } else if ("simple".equals(generator)) {
+                } else if ("simple".equalsIgnoreCase(kind)) {
                     uuid = new SimpleUuidGenerator();
-                } else if ("random".equals(generator)) {
+                } else if ("random".equalsIgnoreCase(kind)) {
                     uuid = new RandomUuidGenerator();
-                } else if (generator == null || "default".equals(generator)) {
+                } else if (kind == null || kind.isEmpty() || "default".equalsIgnoreCase(kind)) {
                     uuid = new DefaultUuidGenerator();
                 } else {
                     // lookup custom generator
-                    uuid = CamelContextHelper.mandatoryLookup(context, generator, UuidGenerator.class);
+                    uuid = CamelContextHelper.mandatoryLookup(context, kind, UuidGenerator.class);
                 }
             }
 
@@ -1024,29 +1017,41 @@ public final class MiscExpressionBuilder {
      */
     public static Expression customFunction(final String name, final String parameter) {
         return new ExpressionAdapter() {
+            private SimpleFunctionRegistry registry;
             private Expression func;
             private Expression exp;
+            private boolean dev;
 
             @Override
             public void init(CamelContext context) {
                 super.init(context);
-                SimpleFunctionRegistry registry
-                        = context.getCamelContextExtension().getContextPlugin(SimpleFunctionRegistry.class);
+                registry = context.getCamelContextExtension().getContextPlugin(SimpleFunctionRegistry.class);
                 func = registry.getFunction(name);
                 if (func == null) {
                     throw new IllegalArgumentException("No custom simple function with name: " + name);
                 }
+                // the simple language caches parsed expressions, so a route reload reuses this adapter;
+                // in dev profile the function is resolved again per evaluation so an edited
+                // SimpleFunction bean (live reload) takes effect
+                dev = "dev".equals(context.getCamelContextExtension().getProfile());
                 exp = ExpressionBuilder.simpleExpression(parameter);
                 exp.init(context);
             }
 
             @Override
             public Object evaluate(Exchange exchange) {
+                Expression target = func;
+                if (dev) {
+                    Expression latest = registry.getFunction(name);
+                    if (latest != null) {
+                        target = latest;
+                    }
+                }
                 final Object originalBody = exchange.getMessage().getBody();
                 try {
                     Object input = exp.evaluate(exchange, Object.class);
                     exchange.getMessage().setBody(input);
-                    return func.evaluate(exchange, Object.class);
+                    return target.evaluate(exchange, Object.class);
                 } finally {
                     exchange.getMessage().setBody(originalBody);
                 }
@@ -1091,5 +1096,28 @@ public final class MiscExpressionBuilder {
                 return "simpleJsonpath[" + path + "]";
             }
         };
+    }
+
+    /**
+     * What kind of type is the value in JSON terms (null, number, string, boolean, array or object)
+     */
+    static String kindOfType(Object value) {
+        if (value == null) {
+            return "null";
+        }
+        Class<?> type = value.getClass();
+        if (value instanceof Number) {
+            // also BigDecimal and BigInteger, such as numbers from a JSON document
+            return "number";
+        } else if (Boolean.class == type) {
+            return "boolean";
+        } else if (value instanceof CharSequence) {
+            return "string";
+        } else if (type.isArray() || value instanceof Collection) {
+            return "array";
+        } else {
+            // a Map is a JSON object
+            return "object";
+        }
     }
 }

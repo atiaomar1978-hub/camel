@@ -44,6 +44,7 @@ final class StatusParser {
             Map<String, String> headerTypes,
             String body,
             String bodyType,
+            long bodySize,
             Map<String, Object> exchangeProperties,
             Map<String, String> exchangePropertyTypes,
             Map<String, Object> exchangeVariables,
@@ -70,6 +71,74 @@ final class StatusParser {
         info.profile = context.getString("profile");
         info.devMode = context.getBooleanOrDefault("devMode", false);
 
+        parseRuntime(info, root, ph);
+        parseStatistics(info, context);
+        parseMemory(info, root);
+
+        JsonObject gc = (JsonObject) root.get("gc");
+        if (gc != null) {
+            info.gcCollectionCount = gc.getLongOrDefault("collectionCount", 0L);
+            info.gcCollectionTime = gc.getLongOrDefault("collectionTime", 0L);
+        }
+
+        JsonObject classLoading = (JsonObject) root.get("classLoading");
+        if (classLoading != null) {
+            info.loadedClassCount = classLoading.getIntegerOrDefault("loadedClassCount", 0);
+            info.totalLoadedClassCount = classLoading.getLongOrDefault("totalLoadedClassCount", 0L);
+        }
+
+        JsonObject threads = (JsonObject) root.get("threads");
+        if (threads != null) {
+            info.threadCount = threads.getIntegerOrDefault("threadCount", 0);
+            info.peakThreadCount = threads.getIntegerOrDefault("peakThreadCount", 0);
+        }
+
+        parseLogger(info, root);
+        parseRoutes(info, root);
+        parseHealthChecks(info, root);
+        parseConsumers(info, root);
+        enrichConsumersWithQuartz(info, root);
+        parseProducers(info, root);
+        parseEvents(info, root);
+        parseRouteController(info, root);
+        parseEndpoints(info, root);
+        parseServices(info, root);
+        parseInternalTasks(info, root);
+        parseCircuitBreakers(info, root);
+
+        // Parse Kafka consumers
+        parseKafkaSection(root, info);
+
+        // Parse error count from error registry
+        JsonObject errorsObj = (JsonObject) root.get("errors");
+        if (errorsObj != null) {
+            info.errorCount = errorsObj.getIntegerOrDefault("size", 0);
+        }
+
+        parseInflight(info, root);
+        parseBlocked(info, root);
+        parseMicrometer(info, root);
+        parseRests(info, root);
+        parsePlatformHttp(info, root);
+        parseProperties(info, root);
+        parseDataSources(info, root);
+        parseSqlTrace(info, root);
+        parseDevConsoles(info, root);
+
+        JsonObject trObj = (JsonObject) root.get("transformers");
+        if (trObj != null) {
+            info.transformerCount = trObj.getIntegerOrDefault("size", 0);
+        }
+
+        parseVaults(info, root);
+
+        return info;
+    }
+
+    /**
+     * Platform, runtime and JVM information.
+     */
+    private static void parseRuntime(IntegrationInfo info, JsonObject root, ProcessHandle ph) {
         JsonObject runtime = (JsonObject) root.get("runtime");
         info.platform = runtime != null ? runtime.getString("platform") : null;
         info.platformVersion = runtime != null ? runtime.getString("platformVersion") : null;
@@ -87,7 +156,13 @@ final class StatusParser {
         info.javaVendor = runtime != null ? runtime.getString("javaVendor") : null;
         info.javaVmName = runtime != null ? runtime.getString("javaVmName") : null;
         info.readmeFiles = runtime != null ? runtime.getString("readmeFiles") : null;
+    }
 
+    /**
+     * Exchange statistics from the context section.
+     */
+    @SuppressWarnings("unchecked")
+    private static void parseStatistics(IntegrationInfo info, JsonObject context) {
         Map<String, ?> stats = context.getMap("statistics");
         if (stats != null) {
             Object thp = stats.get("exchangesThroughput");
@@ -127,7 +202,12 @@ final class StatusParser {
                 info.reloaded = (int) objToLong(reloadStats.get("reloaded"));
             }
         }
+    }
 
+    /**
+     * Heap, old-gen and metaspace memory usage.
+     */
+    private static void parseMemory(IntegrationInfo info, JsonObject root) {
         JsonObject mem = (JsonObject) root.get("memory");
         if (mem != null) {
             info.heapMemUsed = mem.getLongOrDefault("heapMemoryUsed", 0L);
@@ -142,25 +222,12 @@ final class StatusParser {
             info.metaspaceCommitted = mem.getLongOrDefault("metaspaceCommitted", 0L);
             info.metaspaceMax = mem.getLongOrDefault("metaspaceMax", 0L);
         }
+    }
 
-        JsonObject gc = (JsonObject) root.get("gc");
-        if (gc != null) {
-            info.gcCollectionCount = gc.getLongOrDefault("collectionCount", 0L);
-            info.gcCollectionTime = gc.getLongOrDefault("collectionTime", 0L);
-        }
-
-        JsonObject classLoading = (JsonObject) root.get("classLoading");
-        if (classLoading != null) {
-            info.loadedClassCount = classLoading.getIntegerOrDefault("loadedClassCount", 0);
-            info.totalLoadedClassCount = classLoading.getLongOrDefault("totalLoadedClassCount", 0L);
-        }
-
-        JsonObject threads = (JsonObject) root.get("threads");
-        if (threads != null) {
-            info.threadCount = threads.getIntegerOrDefault("threadCount", 0);
-            info.peakThreadCount = threads.getIntegerOrDefault("peakThreadCount", 0);
-        }
-
+    /**
+     * Root logger level.
+     */
+    private static void parseLogger(IntegrationInfo info, JsonObject root) {
         JsonObject logger = (JsonObject) root.get("logger");
         if (logger != null) {
             JsonObject levels = (JsonObject) logger.get("levels");
@@ -168,8 +235,12 @@ final class StatusParser {
                 info.rootLogLevel = levels.getString("root");
             }
         }
+    }
 
-        // Parse routes
+    /**
+     * Routes and their processors with statistics.
+     */
+    private static void parseRoutes(IntegrationInfo info, JsonObject root) {
         JsonArray routes = (JsonArray) root.get("routes");
         if (routes != null) {
             for (Object r : routes) {
@@ -177,6 +248,7 @@ final class StatusParser {
                 RouteInfo ri = new RouteInfo();
                 ri.routeId = rj.getString("routeId");
                 ri.description = rj.getString("description");
+                ri.source = rj.getString("source");
                 ri.group = rj.getString("group");
                 ri.from = rj.getString("from");
                 ri.state = rj.getString("state");
@@ -262,8 +334,12 @@ final class StatusParser {
             info.routeTotal = info.routes.size();
             info.routeStarted = (int) info.routes.stream().filter(r -> "Started".equals(r.state)).count();
         }
+    }
 
-        // Parse health checks and ready status
+    /**
+     * Health checks and ready status.
+     */
+    private static void parseHealthChecks(IntegrationInfo info, JsonObject root) {
         JsonObject healthChecks = (JsonObject) root.get("healthChecks");
         if (healthChecks != null) {
             Boolean rdy = (Boolean) healthChecks.get("ready");
@@ -289,8 +365,12 @@ final class StatusParser {
                 }
             }
         }
+    }
 
-        // Parse consumers
+    /**
+     * Consumers.
+     */
+    private static void parseConsumers(IntegrationInfo info, JsonObject root) {
         JsonObject consumersObj = (JsonObject) root.get("consumers");
         if (consumersObj != null) {
             JsonArray consumerList = (JsonArray) consumersObj.get("consumers");
@@ -328,8 +408,12 @@ final class StatusParser {
                 }
             }
         }
+    }
 
-        // Enrich consumers with quartz trigger schedule data
+    /**
+     * Enriches consumers with quartz trigger schedule data.
+     */
+    private static void enrichConsumersWithQuartz(IntegrationInfo info, JsonObject root) {
         JsonObject quartzObj = (JsonObject) root.get("quartz");
         if (quartzObj != null) {
             JsonArray triggers = (JsonArray) quartzObj.get("triggers");
@@ -356,8 +440,12 @@ final class StatusParser {
                 }
             }
         }
+    }
 
-        // Parse producers
+    /**
+     * Producers.
+     */
+    private static void parseProducers(IntegrationInfo info, JsonObject root) {
         JsonObject producersObj = (JsonObject) root.get("producers");
         if (producersObj != null) {
             JsonArray producerList = (JsonArray) producersObj.get("producers");
@@ -376,16 +464,24 @@ final class StatusParser {
                 }
             }
         }
+    }
 
-        // Parse events
+    /**
+     * Events.
+     */
+    private static void parseEvents(IntegrationInfo info, JsonObject root) {
         JsonObject eventsObj = (JsonObject) root.get("events");
         if (eventsObj != null) {
             parseEventArray(eventsObj, "events", "general", info);
             parseEventArray(eventsObj, "routeEvents", "route", info);
             parseEventArray(eventsObj, "exchangeEvents", "exchange", info);
         }
+    }
 
-        // Parse route controller
+    /**
+     * Route controller state.
+     */
+    private static void parseRouteController(IntegrationInfo info, JsonObject root) {
         JsonObject rcObj = (JsonObject) root.get("routeController");
         if (rcObj != null) {
             info.routeControllerType = rcObj.getString("controller");
@@ -410,8 +506,12 @@ final class StatusParser {
                 }
             }
         }
+    }
 
-        // Parse endpoints (top-level "endpoints" is a JsonObject with nested "endpoints" array)
+    /**
+     * Endpoints (the top-level "endpoints" object holds a nested "endpoints" array).
+     */
+    private static void parseEndpoints(IntegrationInfo info, JsonObject root) {
         JsonObject endpointsObj = (JsonObject) root.get("endpoints");
         if (endpointsObj != null) {
             JsonArray endpointList = (JsonArray) endpointsObj.get("endpoints");
@@ -439,8 +539,12 @@ final class StatusParser {
                 }
             }
         }
+    }
 
-        // Parse services (network endpoints from service dev console)
+    /**
+     * Network services from the service dev console.
+     */
+    private static void parseServices(IntegrationInfo info, JsonObject root) {
         JsonObject serviceObj = (JsonObject) root.get("services");
         if (serviceObj != null) {
             JsonArray serviceList = (JsonArray) serviceObj.get("services");
@@ -460,8 +564,12 @@ final class StatusParser {
                 }
             }
         }
+    }
 
-        // Parse internal tasks
+    /**
+     * Internal tasks.
+     */
+    private static void parseInternalTasks(IntegrationInfo info, JsonObject root) {
         JsonObject internalTasksObj = (JsonObject) root.get("internal-tasks");
         if (internalTasksObj != null) {
             JsonArray taskArr = (JsonArray) internalTasksObj.get("tasks");
@@ -483,8 +591,12 @@ final class StatusParser {
                 }
             }
         }
+    }
 
-        // Parse circuit breakers: resilience4j, fault-tolerance, core
+    /**
+     * Circuit breakers (resilience4j, fault-tolerance, core) enriched with processor statistics.
+     */
+    private static void parseCircuitBreakers(IntegrationInfo info, JsonObject root) {
         parseCbSection(root, "resilience4j", info);
         parseCbSection(root, "fault-tolerance", info);
         parseCbSection(root, "circuit-breaker", info);
@@ -510,17 +622,12 @@ final class StatusParser {
                 }
             }
         }
+    }
 
-        // Parse Kafka consumers
-        parseKafkaSection(root, info);
-
-        // Parse error count from error registry
-        JsonObject errorsObj = (JsonObject) root.get("errors");
-        if (errorsObj != null) {
-            info.errorCount = errorsObj.getIntegerOrDefault("size", 0);
-        }
-
-        // Parse inflight exchanges
+    /**
+     * Inflight exchanges.
+     */
+    private static void parseInflight(IntegrationInfo info, JsonObject root) {
         JsonObject inflightObj = (JsonObject) root.get("inflight");
         if (inflightObj != null) {
             info.inflightBrowseEnabled = inflightObj.getBooleanOrDefault("inflightBrowseEnabled", false);
@@ -545,8 +652,12 @@ final class StatusParser {
                 }
             }
         }
+    }
 
-        // Parse blocked exchanges
+    /**
+     * Blocked exchanges.
+     */
+    private static void parseBlocked(IntegrationInfo info, JsonObject root) {
         JsonObject blockedObj = (JsonObject) root.get("blocked");
         if (blockedObj != null) {
             int blockedCount = blockedObj.getIntegerOrDefault("blocked", 0);
@@ -566,8 +677,12 @@ final class StatusParser {
                 }
             }
         }
+    }
 
-        // Parse micrometer metrics
+    /**
+     * Micrometer metrics.
+     */
+    private static void parseMicrometer(IntegrationInfo info, JsonObject root) {
         JsonObject micrometerObj = (JsonObject) root.get("micrometer");
         if (micrometerObj != null) {
             parseMicrometerMeters(micrometerObj, "counters", "counter", info);
@@ -576,8 +691,12 @@ final class StatusParser {
             parseMicrometerMeters(micrometerObj, "longTaskTimers", "longTaskTimer", info);
             parseMicrometerMeters(micrometerObj, "distribution", "distribution", info);
         }
+    }
 
-        // Parse REST DSL services
+    /**
+     * REST DSL services.
+     */
+    private static void parseRests(IntegrationInfo info, JsonObject root) {
         JsonObject restsObj = (JsonObject) root.get("rests");
         if (restsObj != null) {
             JsonArray restList = (JsonArray) restsObj.get("rests");
@@ -611,8 +730,12 @@ final class StatusParser {
                 }
             }
         }
+    }
 
-        // Parse Platform-HTTP services
+    /**
+     * Platform-HTTP services.
+     */
+    private static void parsePlatformHttp(IntegrationInfo info, JsonObject root) {
         JsonObject phpObj = (JsonObject) root.get("platform-http");
         if (phpObj != null) {
             info.httpServer = phpObj.getString("server");
@@ -621,8 +744,12 @@ final class StatusParser {
         }
 
         fixRestUrlPorts(info);
+    }
 
-        // Parse configuration properties
+    /**
+     * Configuration properties.
+     */
+    private static void parseProperties(IntegrationInfo info, JsonObject root) {
         JsonObject propsObj = (JsonObject) root.get("properties");
         if (propsObj != null) {
             JsonArray propArr = (JsonArray) propsObj.get("properties");
@@ -643,8 +770,12 @@ final class StatusParser {
                 info.configProperties.sort(ConfigurationTab::compareCamelFirst);
             }
         }
+    }
 
-        // Parse dataSources
+    /**
+     * DataSources.
+     */
+    private static void parseDataSources(IntegrationInfo info, JsonObject root) {
         JsonObject dsObj = (JsonObject) root.get("dataSources");
         if (dsObj != null) {
             JsonArray dsList = (JsonArray) dsObj.get("dataSources");
@@ -668,8 +799,12 @@ final class StatusParser {
                 }
             }
         }
+    }
 
-        // Parse sqlTrace
+    /**
+     * SQL trace statements.
+     */
+    private static void parseSqlTrace(IntegrationInfo info, JsonObject root) {
         JsonObject sqlTraceObj = (JsonObject) root.get("sqlTrace");
         if (sqlTraceObj != null) {
             JsonObject summary = (JsonObject) sqlTraceObj.get("summary");
@@ -701,8 +836,12 @@ final class StatusParser {
                 }
             }
         }
+    }
 
-        // Parse registered dev console IDs
+    /**
+     * Registered dev console IDs and browseable-endpoints flag.
+     */
+    private static void parseDevConsoles(IntegrationInfo info, JsonObject root) {
         JsonArray devConsolesArr = (JsonArray) root.get("devConsoles");
         if (devConsolesArr != null) {
             Set<String> ids = new LinkedHashSet<>();
@@ -714,12 +853,12 @@ final class StatusParser {
         if (root.containsKey("hasBrowseableEndpoints")) {
             info.hasBrowseableEndpoints = root.getBooleanOrDefault("hasBrowseableEndpoints", false);
         }
-        JsonObject trObj = (JsonObject) root.get("transformers");
-        if (trObj != null) {
-            info.transformerCount = trObj.getIntegerOrDefault("size", 0);
-        }
+    }
 
-        // Parse vaults / secrets
+    /**
+     * Vault secrets, configmaps and Hashicorp state.
+     */
+    private static void parseVaults(IntegrationInfo info, JsonObject root) {
         JsonObject vaults = (JsonObject) root.get("vaults");
         if (vaults != null) {
             parseVaultSecrets(vaults, "aws-secrets", "AWS", info, true);
@@ -730,8 +869,6 @@ final class StatusParser {
             parseVaultConfigmaps(vaults, info);
             parseVaultHashicorp(vaults, info);
         }
-
-        return info;
     }
 
     static TraceEntry parseTraceEntry(JsonObject json, String pid) {
@@ -832,6 +969,7 @@ final class StatusParser {
             entry.headerTypes = md.headerTypes();
             entry.body = md.body();
             entry.bodyType = md.bodyType();
+            entry.bodySize = md.bodySize();
             if (entry.body != null) {
                 entry.bodyPreview = entry.body.replace("\n", " ").replace("\r", "");
             }
@@ -940,6 +1078,7 @@ final class StatusParser {
             entry.headerTypes = md.headerTypes();
             entry.body = md.body();
             entry.bodyType = md.bodyType();
+            entry.bodySize = md.bodySize();
             entry.exchangeProperties = md.exchangeProperties();
             entry.exchangePropertyTypes = md.exchangePropertyTypes();
             entry.exchangeVariables = md.exchangeVariables();
@@ -966,6 +1105,7 @@ final class StatusParser {
         Map<String, String> headerTypes = null;
         String body = null;
         String bodyType = null;
+        long bodySize = -1;
         Map<String, Object> exchangeProperties = null;
         Map<String, String> exchangePropertyTypes = null;
         Map<String, Object> exchangeVariables = null;
@@ -994,6 +1134,9 @@ final class StatusParser {
             Object val = bodyJson.get("value");
             body = val != null ? val.toString() : null;
             bodyType = TuiHelper.shortTypeName(bodyJson.getString("type"));
+            if (bodyJson.get("size") instanceof Number n) {
+                bodySize = n.longValue();
+            }
         } else if (bodyObj != null) {
             body = bodyObj.toString();
         }
@@ -1035,7 +1178,7 @@ final class StatusParser {
         }
 
         return new MessageData(
-                headers, headerTypes, body, bodyType,
+                headers, headerTypes, body, bodyType, bodySize,
                 exchangeProperties, exchangePropertyTypes, exchangeVariables, exchangeVariableTypes);
     }
 
@@ -1152,6 +1295,9 @@ final class StatusParser {
             cb.successfulCalls = TuiHelper.objToLong(bj.get("successfulCalls"));
             cb.failedCalls = TuiHelper.objToLong(bj.get("failedCalls"));
             cb.notPermittedCalls = TuiHelper.objToLong(bj.get("notPermittedCalls"));
+            cb.fallbackCalls = TuiHelper.objToLong(bj.get("fallbackCalls"));
+            cb.timedOutCalls = TuiHelper.objToLong(bj.get("timedOutCalls"));
+            cb.bulkheadRejectedCalls = TuiHelper.objToLong(bj.get("bulkheadRejectedCalls"));
             Object fr = bj.get("failureRate");
             cb.failureRate = fr instanceof Number n ? n.doubleValue() : -1;
             info.circuitBreakers.add(cb);
@@ -1269,6 +1415,12 @@ final class StatusParser {
             ei.nodeId = ej.getString("nodeId");
             ei.exchangeId = ej.getString("exchangeId");
             ei.handled = Boolean.TRUE.equals(ej.get("handled"));
+            Long rc = ej.getLong("repeatCount");
+            ei.repeatCount = rc != null ? rc : 1;
+            Long rf = ej.getLong("repeatFirstTimestamp");
+            if (rf != null) {
+                ei.repeatFirstTimestamp = rf;
+            }
             Long ts = ej.getLong("timestamp");
             if (ts != null) {
                 ei.timestamp = ts;
@@ -1300,6 +1452,9 @@ final class StatusParser {
                 if (bodyObj instanceof JsonObject bodyJson) {
                     ei.body = bodyJson.getString("value");
                     ei.bodyType = TuiHelper.shortTypeName(bodyJson.getString("type"));
+                    if (bodyJson.get("size") instanceof Number n) {
+                        ei.bodySize = n.longValue();
+                    }
                 } else if (bodyObj != null) {
                     ei.body = bodyObj.toString();
                 }

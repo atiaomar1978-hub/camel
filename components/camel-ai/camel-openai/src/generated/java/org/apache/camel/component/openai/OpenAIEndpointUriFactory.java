@@ -18,35 +18,64 @@ import org.apache.camel.spi.EndpointUriFactory;
 public class OpenAIEndpointUriFactory extends org.apache.camel.support.component.EndpointUriFactorySupport implements EndpointUriFactory {
 
     private static final String BASE = ":operation";
+    private static final String[] SCHEMES = new String[]{"openai", "llm"};
 
     private static final Set<String> PROPERTY_NAMES;
     private static final Set<String> SECRET_PROPERTY_NAMES;
     private static final Set<String> ENDPOINT_IDENTITY_PROPERTY_NAMES;
     private static final Map<String, String> MULTI_VALUE_PREFIXES;
     static {
-        Set<String> props = new HashSet<>(68);
+        Set<String> props = new HashSet<>(103);
         props.add("additionalBodyProperty");
         props.add("additionalHeader");
         props.add("additionalResponseHeader");
         props.add("apiKey");
+        props.add("audioChunkingStrategy");
+        props.add("audioInclude");
+        props.add("audioKeywords");
+        props.add("audioKnownSpeakerNames");
+        props.add("audioKnownSpeakerReferences");
         props.add("audioLanguage");
+        props.add("audioLanguages");
         props.add("audioModel");
         props.add("audioPrompt");
         props.add("audioResponseFormat");
         props.add("audioTemperature");
         props.add("audioTimestampGranularities");
         props.add("autoToolExecution");
+        props.add("background");
         props.add("baseUrl");
+        props.add("batchEndpoint");
+        props.add("batchMetadata");
+        props.add("batchResultsFile");
+        props.add("bridgeErrorHandler");
         props.add("builtinTools");
+        props.add("connectTimeout");
         props.add("conversationHistoryProperty");
+        props.add("conversationId");
         props.add("conversationMemory");
         props.add("developerMessage");
         props.add("dimensions");
         props.add("embeddingModel");
         props.add("encodingFormat");
+        props.add("exceptionHandler");
+        props.add("exchangePattern");
         props.add("fileSearchVectorStoreIds");
         props.add("hallucinatedToolNameStrategy");
         props.add("hostedMcpTools");
+        props.add("httpServerComponent");
+        props.add("imageBackground");
+        props.add("imageCount");
+        props.add("imageInputFidelity");
+        props.add("imageModel");
+        props.add("imageModeration");
+        props.add("imageOutputCompression");
+        props.add("imageOutputFormat");
+        props.add("imagePrompt");
+        props.add("imageQuality");
+        props.add("imageResponseFormat");
+        props.add("imageSize");
+        props.add("imageStyle");
         props.add("jsonSchema");
         props.add("lazyStartProducer");
         props.add("maxAgenticTokens");
@@ -61,12 +90,14 @@ public class OpenAIEndpointUriFactory extends org.apache.camel.support.component
         props.add("mcpTimeout");
         props.add("mcpToolRefresh");
         props.add("model");
+        props.add("moderationModel");
         props.add("oauthProfile");
         props.add("operation");
         props.add("outputClass");
         props.add("parallelToolExecution");
         props.add("parallelToolTimeout");
         props.add("previousResponseId");
+        props.add("readTimeout");
         props.add("requestTimeout");
         props.add("speechInstructions");
         props.add("speechModel");
@@ -89,30 +120,43 @@ public class OpenAIEndpointUriFactory extends org.apache.camel.support.component
         props.add("streaming");
         props.add("stripThinking");
         props.add("systemMessage");
+        props.add("tags");
         props.add("temperature");
         props.add("toolExecutionErrorStrategy");
         props.add("topP");
         props.add("userMessage");
+        props.add("webhookMaxPayloadSize");
+        props.add("webhookPath");
+        props.add("webhookSecret");
+        props.add("writeTimeout");
         PROPERTY_NAMES = Collections.unmodifiableSet(props);
-        Set<String> secretProps = new HashSet<>(5);
+        Set<String> secretProps = new HashSet<>(7);
         secretProps.add("additionalHeader");
         secretProps.add("apiKey");
+        secretProps.add("hostedMcpTools");
         secretProps.add("sslKeyPassword");
         secretProps.add("sslKeystorePassword");
         secretProps.add("sslTruststorePassword");
+        secretProps.add("webhookSecret");
         SECRET_PROPERTY_NAMES = Collections.unmodifiableSet(secretProps);
         ENDPOINT_IDENTITY_PROPERTY_NAMES = Collections.emptySet();
-        Map<String, String> prefixes = new HashMap<>(4);
+        Map<String, String> prefixes = new HashMap<>(5);
         prefixes.put("additionalBodyProperty", "additionalBodyProperty.");
         prefixes.put("additionalHeader", "additionalHeader.");
         prefixes.put("additionalResponseHeader", "additionalResponseHeader.");
+        prefixes.put("batchMetadata", "batchMetadata.");
         prefixes.put("mcpServer", "mcpServer.");
         MULTI_VALUE_PREFIXES = Collections.unmodifiableMap(prefixes);
     }
 
     @Override
     public boolean isEnabled(String scheme) {
-        return "openai".equals(scheme);
+        for (String s : SCHEMES) {
+            if (s.equals(scheme)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override

@@ -82,6 +82,15 @@ public class OpenAIToolExecutionProducer extends DefaultProducer {
 
     @Override
     public void process(Exchange exchange) throws Exception {
+        try {
+            processInternal(exchange);
+        } catch (Exception e) {
+            OpenAIGenAiProducerSupport.applyErrorMetadata(exchange, e);
+            throw e;
+        }
+    }
+
+    private void processInternal(Exchange exchange) throws Exception {
         // Get the full ChatCompletion response (stored by storeFullResponse=true on chat-completion)
         ChatCompletion response = exchange.getProperty(OpenAIConstants.RESPONSE, ChatCompletion.class);
         if (response == null) {
@@ -133,10 +142,11 @@ public class OpenAIToolExecutionProducer extends DefaultProducer {
                         .toolCalls(toolCalls)
                         .build()));
 
-        // Execute each tool call via MCP and add tool result messages
-        if (getEndpoint().getMcpToolState().toolClientMap().isEmpty()) {
+        // Execute each tool call via MCP or route tools and add tool result messages
+        McpToolState toolState = getEndpoint().getMcpToolState();
+        if (toolState.toolClientMap().isEmpty() && toolState.routeTools().isEmpty()) {
             throw new IllegalStateException(
-                    "No MCP tool clients configured on the endpoint. Configure mcpServer.* parameters.");
+                    "No tools configured on the endpoint. Configure mcpServer.* parameters and/or the tags option.");
         }
 
         List<McpToolCallExecutor.ToolResult> results = toolCallExecutor.execute(toolCalls);

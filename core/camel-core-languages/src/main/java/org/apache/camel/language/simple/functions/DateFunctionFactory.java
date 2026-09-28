@@ -16,6 +16,9 @@
  */
 package org.apache.camel.language.simple.functions;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.apache.camel.CamelContext;
 import org.apache.camel.Expression;
 import org.apache.camel.language.simple.DateExpressionBuilder;
@@ -30,6 +33,8 @@ import static org.apache.camel.language.simple.SimpleFunctionHelper.ifStartsWith
  */
 public final class DateFunctionFactory implements SimpleLanguageFunctionFactory {
 
+    private static final Pattern TIMEZONE_WITH_COLON = Pattern.compile("((?:GMT|UTC)?[+-]\\d{1,2}:\\d{2}):(.+)");
+
     @Override
     public Expression createFunction(CamelContext camelContext, String function, int index) {
         String remainder = ifStartsWithReturnRemainder("date-with-timezone:", function);
@@ -38,6 +43,11 @@ public final class DateFunctionFactory implements SimpleLanguageFunctionFactory 
             if (parts.length < 3) {
                 throw new SimpleParserException(
                         "Valid syntax: ${date-with-timezone:command:timezone:pattern} was: " + function, index);
+            }
+            // a timezone with an offset holds a colon itself, such as GMT+02:00
+            Matcher offset = TIMEZONE_WITH_COLON.matcher(remainder.substring(parts[0].length() + 1));
+            if (offset.matches()) {
+                return DateExpressionBuilder.dateExpression(parts[0], offset.group(1), offset.group(2));
             }
             return DateExpressionBuilder.dateExpression(parts[0], parts[1], parts[2]);
         }
@@ -49,36 +59,6 @@ public final class DateFunctionFactory implements SimpleLanguageFunctionFactory 
                 return DateExpressionBuilder.dateExpression(parts[0]);
             } else {
                 return DateExpressionBuilder.dateExpression(parts[0], parts[1]);
-            }
-        }
-
-        return null;
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    public String createCode(CamelContext camelContext, String function, int index) {
-        if ("date:millis".equals(function)) {
-            return "System.currentTimeMillis()";
-        }
-
-        String remainder = ifStartsWithReturnRemainder("date-with-timezone:", function);
-        if (remainder != null) {
-            String[] parts = remainder.split(":", 3);
-            if (parts.length < 3) {
-                throw new SimpleParserException(
-                        "Valid syntax: ${date-with-timezone:command:timezone:pattern} was: " + function, index);
-            }
-            return "date(exchange, \"" + parts[0] + "\", \"" + parts[1] + "\", \"" + parts[2] + "\")";
-        }
-
-        remainder = ifStartsWithReturnRemainder("date:", function);
-        if (remainder != null) {
-            String[] parts = remainder.split(":", 2);
-            if (parts.length == 1) {
-                return "date(exchange, \"" + parts[0] + "\")";
-            } else {
-                return "date(exchange, \"" + parts[0] + "\", null, \"" + parts[1] + "\")";
             }
         }
 

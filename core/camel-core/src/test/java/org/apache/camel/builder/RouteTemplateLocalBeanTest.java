@@ -685,6 +685,41 @@ public class RouteTemplateLocalBeanTest extends ContextTestSupport {
         context.stop();
     }
 
+    @Test
+    public void testLocalBeanInferredBuilder() throws Exception {
+        context.addRoutes(new RouteBuilder() {
+            @Override
+            public void configure() {
+                routeTemplate("myTemplate").templateParameter("foo").templateParameter("bar")
+                        .templateBean("myBar")
+                        // CAMEL-24820: the type has no public constructor but a builder(), which is inferred
+                        .typeClass(BuiltProcessor.class)
+                        .property("prefix", "MyPrefix ")
+                        .end()
+                        .from("direct:{{foo}}")
+                        .to("bean:{{bar}}");
+            }
+        });
+
+        context.start();
+
+        TemplatedRouteBuilder.builder(context, "myTemplate")
+                .parameter("foo", "one")
+                .parameter("bar", "myBar")
+                .routeId("myRoute")
+                .add();
+
+        assertEquals(1, context.getRoutes().size());
+
+        Object out = template.requestBody("direct:one", "World");
+        assertEquals("MyPrefix Built World", out);
+
+        // should not be a global bean
+        assertNull(context.getRegistry().lookupByName("myBar"));
+
+        context.stop();
+    }
+
     public static class BuilderProcessor implements Processor {
 
         @Override
@@ -834,6 +869,42 @@ public class RouteTemplateLocalBeanTest extends ContextTestSupport {
     }
 
     @Test
+    public void testLocalBeanBuilderClassWithoutType() throws Exception {
+        context.addRoutes(new RouteBuilder() {
+            @Override
+            public void configure() {
+                routeTemplate("myTemplate").templateParameter("foo").templateParameter("bar")
+                        .templateBean("myBar")
+                        // a bean created by a builder needs no type (class name)
+                        .builderClass("org.apache.camel.builder.RouteTemplateLocalBeanTest$BuilderThreeProcessorBuilder")
+                        .builderMethod("createProcessor")
+                        .property("prefix", "MyPrefix ")
+                        .end()
+                        .from("direct:{{foo}}")
+                        .to("bean:{{bar}}");
+            }
+        });
+
+        context.start();
+
+        TemplatedRouteBuilder.builder(context, "myTemplate")
+                .parameter("foo", "one")
+                .parameter("bar", "myBar")
+                .routeId("myRoute")
+                .add();
+
+        assertEquals(1, context.getRoutes().size());
+
+        Object out = template.requestBody("direct:one", "World");
+        assertEquals("MyPrefix Builder3 World", out);
+
+        // should not be a global bean
+        assertNull(context.getRegistry().lookupByName("myBar"));
+
+        context.stop();
+    }
+
+    @Test
     public void testLocalBeanConstructorParameterInType() throws Exception {
         context.addRoutes(new RouteBuilder() {
             @Override
@@ -933,6 +1004,53 @@ public class RouteTemplateLocalBeanTest extends ContextTestSupport {
             exchange.getMessage().setHeader("counter", counter);
         }
 
+    }
+
+    /** A processor with no public constructor, created through its builder (CAMEL-24820) */
+    public static final class BuiltProcessor implements Processor {
+
+        private final String prefix;
+
+        private BuiltProcessor(String prefix) {
+            this.prefix = prefix;
+        }
+
+        public static Builder builder() {
+            return new Builder();
+        }
+
+        @Override
+        public void process(Exchange exchange) {
+            exchange.getMessage().setBody(prefix + "Built " + exchange.getMessage().getBody());
+        }
+
+        public static final class Builder {
+            private String prefix = "";
+
+            public Builder prefix(String prefix) {
+                this.prefix = prefix;
+                return this;
+            }
+
+            public BuiltProcessor build() {
+                return new BuiltProcessor(prefix);
+            }
+        }
+    }
+
+    public static class BuilderThreeProcessorBuilder {
+
+        private String prefix = "";
+
+        public void setPrefix(String prefix) {
+            this.prefix = prefix;
+        }
+
+        public BuilderThreeProcessor createProcessor() {
+            BuilderThreeProcessor answer = new BuilderThreeProcessor();
+            answer.setPrefix(prefix);
+            return answer;
+        }
     }
 
     public Processor createBuilderProcessor() {

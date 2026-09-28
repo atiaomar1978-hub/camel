@@ -35,10 +35,15 @@ final class TuiBackendHelper {
         // classpath (for --web), auto-discovery can pick AeshBackend for the local session too,
         // which drives a native PosixSysTerminal that doesn't shut down cleanly here.
         JLineBackend backend = activeTerminal != null ? new JLineBackend(activeTerminal) : new JLineBackend();
-        return TuiRunner.create(TuiConfig.builder().backend(backend).mouseCapture(true).build());
+        return createTuiRunner(backend);
     }
 
+    /**
+     * Creates the runner for an explicitly built backend. {@code TuiRunner.create} wraps it for Asciinema recording
+     * itself when {@code --record} configured the {@code tamboui.record*} system properties.
+     */
     static TuiRunner createTuiRunner(Backend backend) throws Exception {
-        return TuiRunner.create(TuiConfig.builder().backend(backend).mouseCapture(true).build());
+        return TuiRunner.create(
+                TuiConfig.builder().backend(backend).mouseCapture(true).bracketedPaste(true).build());
     }
 }

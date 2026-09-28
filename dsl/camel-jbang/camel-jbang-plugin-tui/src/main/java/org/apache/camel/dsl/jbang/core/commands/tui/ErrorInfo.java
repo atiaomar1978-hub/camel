@@ -25,6 +25,9 @@ class ErrorInfo {
     String exchangeId;
     boolean handled;
     long timestamp;
+    /** How often this kind of error happened (CAMEL-24911); 1 when it only happened once. */
+    long repeatCount = 1;
+    long repeatFirstTimestamp;
     String location;
     String threadName;
     long elapsed;
@@ -36,6 +39,7 @@ class ErrorInfo {
     String[] messageHistory;
     String body;
     String bodyType;
+    long bodySize = -1;
     final Map<String, Object> headers = new LinkedHashMap<>();
     final Map<String, String> headerTypes = new LinkedHashMap<>();
     final Map<String, Object> properties = new LinkedHashMap<>();

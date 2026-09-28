@@ -24,7 +24,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.camel.CamelContext;
 import org.apache.camel.Exchange;
 import org.apache.camel.Expression;
-import org.apache.camel.language.simple.BaseSimpleParser;
 import org.apache.camel.language.simple.types.ChainOperatorType;
 import org.apache.camel.language.simple.types.SimpleParserException;
 import org.apache.camel.language.simple.types.SimpleToken;
@@ -135,7 +134,7 @@ public class ChainExpression extends BaseSimpleNode {
                 if (PluginHelper.getSimpleFunctionRegistry(camelContext).getCustomFunctionNames().contains(key)) {
                     String changed = text.replace("$" + key + "()", "function(" + key + ")");
                     if (changed.equals(text)) {
-                        changed = text.replace("$" + key + "(", "function(" + key);
+                        changed = text.replace("$" + key + "(", "function(" + key + ",");
                     }
                     le.replaceText(changed);
 
@@ -203,14 +202,4 @@ public class ChainExpression extends BaseSimpleNode {
             }
         };
     }
-
-    @Override
-    public String createCode(CamelContext camelContext, String expression) throws SimpleParserException {
-        return BaseSimpleParser.CODE_START + doCreateCode(camelContext, expression) + BaseSimpleParser.CODE_END;
-    }
-
-    private String doCreateCode(CamelContext camelContext, String expression) throws SimpleParserException {
-        throw new SimpleParserException("Chain operator " + operator + " not supported in csimple", token.getIndex());
-    }
-
 }

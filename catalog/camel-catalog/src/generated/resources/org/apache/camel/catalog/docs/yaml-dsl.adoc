@@ -19,20 +19,21 @@ A route is collection of elements defined as follows:
 
 [source,yaml]
 ----
-- from: #<1>
-    uri: "direct:start"
-    steps: #<2>
-      - filter:
-          expression:
-            simple: "${in.header.continue} == true"
-          steps: #<2>
-            - to:
-                uri: "log:filtered"
-      - to:
-          uri: "log:original"
+- route: #<1>
+    from:
+      uri: "direct:start"
+      steps: #<2>
+        - filter:
+            expression:
+              simple: "${in.header.continue} == true"
+            steps: #<2>
+              - to:
+                  uri: "log:filtered"
+        - to:
+            uri: "log:original"
 ----
 
-<1> route entry point, by default `from` and `rest` are supported
+<1> a route, with the `from` endpoint it consumes from (`rest`, `beans`, `onException` and more are the other top-level entries)
 <2> processing steps
 
 [NOTE]
@@ -190,14 +191,15 @@ This allows YAML such as:
 
 [source,yaml]
 ----
-- from:
-    uri: "direct:start"
-    steps:
-      - myStep:
-          id: "custom-step"
-          steps:
-            - to:
-                uri: "mock:result"
+- route:
+    from:
+      uri: "direct:start"
+      steps:
+        - myStep:
+            id: "custom-step"
+            steps:
+              - to:
+                  uri: "mock:result"
 ----
 
 Resolvers are discovered when YAML routes are parsed. Camel starts with the built-in YAML DSL resolvers, then adds the
@@ -295,25 +297,27 @@ To define an endpoint with the YAML dsl you have two options:
 +
 [source,yaml]
 ----
-- from:
-    uri: "timer:tick?period=1s"
-    steps:
-      - to:
-          uri: "telegram:bots?authorizationToken=XXX"
+- route:
+    from:
+      uri: "timer:tick?period=1s"
+      steps:
+        - to:
+            uri: "telegram:bots?authorizationToken=XXX"
 ----
 . Using URI and parameters:
 +
 [source,yaml]
 ----
-- from:
-    uri: "timer://tick"
-    parameters:
-      period: "1s"
-    steps:
-      - to:
-          uri: "telegram:bots"
-          parameters:
-            authorizationToken: "XXX"
+- route:
+    from:
+      uri: "timer://tick"
+      parameters:
+        period: "1s"
+      steps:
+        - to:
+            uri: "telegram:bots"
+            parameters:
+              authorizationToken: "XXX"
 ----
 
 === Map values for parameters
@@ -326,18 +330,17 @@ configure _tags_ as a Map:
 
 [source,yaml]
 ----
-- from:
-    uri: "timer:tick"
-    parameters:
-      period: "1000"
-    steps:
-      - to:
-          uri: "plc4x"
-          parameters:
-            driver: "some driver url here"
-            tags:
-              "tags_2": "XXX"
-              "tags_6": "YYY"
+- route:
+    from:
+      uri: "plc4x"
+      parameters:
+        driver: "some driver url here"
+        tags:
+          "tags_2": "XXX"
+          "tags_6": "YYY"
+      steps:
+        - to:
+            uri: "log:plc"
 ----
 
 In this example the _tags_ options is of Map type and can be configured using YAML map syntax.
@@ -361,6 +364,24 @@ In addition to the general support for creating beans provided by xref:others:ma
 <1> the name of the bean which will be used to bound the instance to the Camel Registry
 <2> the full qualified class name of the bean
 <3> the properties of the bean to be set
+
+A bean declared this way is bound to the Camel registry, so a route in the same file can refer to it by name, such as
+calling it with the xref:eips:bean-eip.adoc[Bean] EIP:
+
+[source,yaml]
+----
+- beans:
+    - name: myBean
+      type: "#class:com.acme.MyBean"
+- route:
+    from:
+      uri: timer:tick?period=5000
+      steps:
+        - bean:
+            ref: myBean
+            method: hello
+        - log: "${body}"
+----
 
 The properties of the bean can be defined using either a map or properties style, as shown in the example below:
 
@@ -500,6 +521,53 @@ The builder class is then used to create the actual bean by using fluent builder
 So the properties will be set on the builder class, and the bean is created by invoking the `builderMethod`
 at the end. The invocation of this method is done via Java reflection.
 
+==== Classes with a builder() method
+
+Many libraries create their objects through a builder only: the class has no public constructor but a
+public static `builder()` method (Lombok `@Builder`, Immutables, LangChain4j, Spring AI, the AWS SDK v2, Jackson,
+MongoDB, OpenTelemetry) or `newBuilder()` method (the JDK `HttpClient`, protobuf, gRPC, Caffeine, Guava),
+returning a builder with fluent setters and a `build()` method.
+
+Such a class needs no `builderClass` and `builderMethod`: when the type has no public no-arg constructor,
+Camel calls its `builder()` (or `newBuilder()`) method, sets the properties on the returned builder,
+and creates the bean with the builder's `build()` method. A LangChain4j chat model is then declared like any other bean:
+
+[source,yaml]
+----
+- beans:
+  - name: chatModel
+    type: dev.langchain4j.model.ollama.OllamaChatModel
+    properties:
+      baseUrl: "{{ollama.base.url}}"
+      modelName: "{{ollama.model}}"
+      timeout: 2m
+----
+
+The property names are those of the builder's fluent setters (`modelName`, not `model`); a property the builder does
+not take is set on the created bean if it has a setter, and an unknown property is an error naming the property.
+If the builder has no `build()` method, Camel uses its single public no-arg method that returns the type (such as
+`create()`), and if there are several such methods, or the method has another name, then set `builderMethod`:
+
+[source,yaml]
+----
+- beans:
+  - name: myBean
+    type: com.acme.MyBean
+    builderMethod: createMyBean
+    properties:
+      id: 123
+----
+
+NOTE: A class that has a public no-arg constructor is created with the constructor as usual, even if it also has a
+`builder()` method. Use `builderClass` for a builder that is a separate class, or is not obtained from a `builder()`
+or `newBuilder()` method, and `factoryMethod` for a static method that takes the values as arguments.
+
+When a property is not one the builder or the bean accepts, the error names the properties they accept, and
+a class that has neither a public no-arg constructor nor a builder is reported with the ways it can be created:
+its constructors (for `constructors`), its static factory methods (for `factoryMethod`), or a builder class of its own.
+`camel validate` (and the `camel_validate_source` tool of the Camel MCP server) report the same for the classes
+they can load, before the integration runs.
+
 === Creating beans using script language
 
 For advanced use-cases then Camel allows to inline a script language, such as groovy, java, javascript, etc, to create the bean.
@@ -513,8 +581,8 @@ This gives flexibility to use a bit of programming to create and configure the b
     scriptLanguage: groovy
     script: >
       // some groovy script here to create the bean
-      bean = ...
-      ...
+      def bean = new com.acme.MyBean()
+      bean.name = 'Camel'
       return bean
 ----
 
@@ -530,10 +598,9 @@ You can refer to property placeholder values using `{{ }}` syntax inside the scr
     scriptLanguage: groovy
     script: >
       // some groovy script here to create the bean
-      bean = ...
-      bean.street = '{{addressLine1}}`
-      bean.street2 = '{{addressLine2}}`
-      ...
+      def bean = new com.acme.MyBean()
+      bean.street = '{{addressLine1}}'
+      bean.street2 = '{{addressLine2}}'
       return bean
 ----
 
@@ -549,10 +616,9 @@ Instead, you can invoke the APIs on `CamelContext` such as:
     scriptPropertyPlaceholders: false
     script: >
       // some groovy script here to create the bean
-      bean = ...
+      def bean = new com.acme.MyBean()
       bean.street = context.resolvePropertyPlaceholders('addressLine1')
       bean.street2 = context.resolvePropertyPlaceholders('addressLine2')
-      ...
       return bean
 ----
 
@@ -610,27 +676,28 @@ as shown below:
 
 [source,yaml]
 ----
-- from:
-    uri: "direct:start"
-    steps:
-      - choice:
-          when:
-          - jsonpath:
-              expression: "person.middlename"
-              suppressExceptions: true
-            steps:
-            - to:
-                uri: mock:middle
-          - jsonpath:
-              expression: "person.lastname"
-              suppressExceptions: true
-            steps:
-            - to:
-                uri: mock:last
-          otherwise:
-            steps:
+- route:
+    from:
+      uri: "direct:start"
+      steps:
+        - choice:
+            when:
+            - jsonpath:
+                expression: "person.middlename"
+                suppressExceptions: true
+              steps:
               - to:
-                  uri: mock:other
+                  uri: mock:middle
+            - jsonpath:
+                expression: "person.lastname"
+                suppressExceptions: true
+              steps:
+              - to:
+                  uri: mock:last
+            otherwise:
+              steps:
+                - to:
+                    uri: mock:other
 ----
 
 In the route above, the following message
@@ -674,6 +741,7 @@ The canonical schema removes all implicit patterns:
 * No string shorthands: EIPs like `log` must use the object form with explicit properties.
 * No implicit expressions: Expression-aware EIPs require the `expression` wrapper.
 * No `oneOf`/`anyOf`/`not` constructs: The schema uses only simple `type: object` with `properties`.
+* A route is written under `route:`: a top-level `from:` is the compact notation of a route.
 
 This results in a schema that is approximately 25% smaller and significantly easier for tooling to process.
 
@@ -685,15 +753,15 @@ Classic::
 +
 [source,yaml]
 ----
-- log: "${body}"
+log: "${body}"
 ----
 
 Canonical::
 +
 [source,yaml]
 ----
-- log:
-    message: "${body}"
+log:
+  message: "${body}"
 ----
 ====
 
@@ -705,18 +773,18 @@ Classic::
 +
 [source,yaml]
 ----
-- setBody:
-    simple: "Hello Camel from ${routeId}"
+setBody:
+  simple: "Hello Camel from ${routeId}"
 ----
 
 Canonical::
 +
 [source,yaml]
 ----
-- setBody:
-    expression:
-      simple:
-        expression: "Hello Camel from ${routeId}"
+setBody:
+  expression:
+    simple:
+      expression: "Hello Camel from ${routeId}"
 ----
 ====
 
@@ -728,20 +796,20 @@ Classic::
 +
 [source,yaml]
 ----
-- setHeader:
-    name: Content-Type
-    constant: "application/json"
+setHeader:
+  name: Content-Type
+  constant: "application/json"
 ----
 
 Canonical::
 +
 [source,yaml]
 ----
-- setHeader:
-    name: Content-Type
-    expression:
-      constant:
-        expression: "application/json"
+setHeader:
+  name: Content-Type
+  expression:
+    constant:
+      expression: "application/json"
 ----
 ====
 
@@ -753,42 +821,42 @@ Classic::
 +
 [source,yaml]
 ----
-- choice:
-    when:
-      - simple: "${body} == 'Hello'"
-        steps:
-          - setProperty:
-              name: myProp
-              simple: "${body}"
-    otherwise:
+choice:
+  when:
+    - simple: "${body} == 'Hello'"
       steps:
         - setProperty:
             name: myProp
-            constant: "default"
+            simple: "${body}"
+  otherwise:
+    steps:
+      - setProperty:
+          name: myProp
+          constant: "default"
 ----
 
 Canonical::
 +
 [source,yaml]
 ----
-- choice:
-    when:
-      - expression:
-          simple:
-            expression: "${body} == 'Hello'"
-        steps:
-          - setProperty:
-              name: myProp
-              expression:
-                simple:
-                  expression: "${body}"
-    otherwise:
+choice:
+  when:
+    - expression:
+        simple:
+          expression: "${body} == 'Hello'"
       steps:
         - setProperty:
             name: myProp
             expression:
-              constant:
-                expression: "default"
+              simple:
+                expression: "${body}"
+  otherwise:
+    steps:
+      - setProperty:
+          name: myProp
+          expression:
+            constant:
+              expression: "default"
 ----
 ====
 
@@ -837,7 +905,7 @@ a simpler, more predictable schema structure. The classic schema remains the def
 === Using the schemas with IDEs
 
 The classic schema is registered in the https://www.schemastore.org/[JSON Schema Store] and is automatically
-used by IDEs like VS Code and IntelliJ for files matching `*.camel.yaml` and `*.camelk.yaml`.
+used by IDEs like VS Code and IntelliJ for files matching `+*.camel.yaml+` and `+*.camelk.yaml+`.
 
 To use the canonical schema instead, configure your IDE to point to the canonical schema URL:
 
@@ -869,8 +937,11 @@ camel validate normalize --output normalized/ myroute.yaml
 === Compact notation warning
 
 Camel logs a WARN message when YAML routes use compact (shorthand) notation instead of
-the canonical (explicit) form. This is to encourage adopting the canonical style which is
-more friendly for tooling and AI assistants.
+the canonical (explicit) form: a step written as a string (`log: "..."`), a language written as a
+string (`simple: "..."`), or a language key directly on the EIP (`setBody: {simple: ...}`) instead of
+under `expression:`. A top-level `- from:` without `- route:` is compact notation as well: a route is
+written under `route:`, as an XML route is always a `<route>`. This is to encourage adopting the canonical
+style which is more friendly for tooling and AI assistants.
 
 The warning is logged once per resource file and looks like:
 
@@ -896,7 +967,13 @@ To validate YAML routes against the canonical schema:
 camel validate yaml --canonical myroute.yaml
 ----
 
-This reports any shorthands or implicit forms that are not valid in the canonical schema.
+This reports each use of the compact notation with the canonical form to write, for example:
+
+----
+/0/route/from/steps/0/setBody: setBody: {simple: ...} is the deprecated compact notation: an expression is written under expression: (setBody: {expression: {simple: {expression: "..."}}}); camel validate normalize rewrites a file in the canonical format
+/0/route/from/steps/1/log: log: "..." is the deprecated compact notation: write log: {message: "..."}; camel validate normalize rewrites a file in the canonical format
+/1: a top-level from: is the deprecated compact notation: a route is written under route: (- route: {from: {uri: "...", steps: [...]}}); camel validate normalize rewrites a file in the canonical format
+----
 
 The `YamlValidator` class supports both schemas programmatically:
 
@@ -916,3 +993,14 @@ which demonstrate creating Camel Routes with YAML.
 
 Another way to find examples of YAML DSL is to look in https://github.com/apache/camel-kamelets[Camel Kamelets]
 where each Kamelet is defined using YAML.
+
+
+== Deprecated: Pipe (kind: Pipe) support
+
+The YAML DSL can load Camel K `kind: Pipe` resources (formerly `KameletBinding`), typically from a
+`.pipe.yaml` file, converting the source, steps and sink into a regular route when the file is loaded.
+
+This is deprecated and will be removed in a future release. Loading a Pipe file now logs a deprecation
+warning. Write a plain Camel route instead, which is more expressive (any EIP, multiple routes per file,
+error handling and route configuration) and is what the tooling, catalog and validator work on. See the
+xref:manual::camel-4x-upgrade-guide-4_23.adoc[Camel 4.23 upgrade guide] for an example of the equivalent route.

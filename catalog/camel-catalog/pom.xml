@@ -135,6 +135,11 @@
             <artifactId>log4j-core</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.apache.camel</groupId>
+            <artifactId>camel-typesafe-ai</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -157,6 +162,8 @@
                             <goal>prepare-catalog</goal>
                             <!-- update secrets in camel-util -->
                             <goal>update-sensitive-helper</goal>
+                            <!-- update artifact names in camel-util -->
+                            <goal>update-artifact-helper</goal>
                             <!-- update mime-types in camel-util -->
                             <goal>update-mime-type-helper</goal>
                             <!-- update important headers in camel-util -->

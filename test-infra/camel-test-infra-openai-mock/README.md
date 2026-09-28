@@ -64,3 +64,76 @@ public class MyOpenAIApiTest {
     }
 }
 ```
+
+## Asserting on received requests
+
+The mock records every request it receives. Assert on them after the call, on the test thread, instead of inside
+an `assertRequest` callback, where a failed assertion surfaces as an HTTP error for the client under test:
+
+```java
+RecordedRequest request = openAIMock.getLastRequest();
+assertEquals("/v1/responses", request.path());
+assertEquals("gpt-5", request.bodyAsJson().path("model").asText());
+```
+
+`getReceivedRequests()` returns all of them in arrival order. The list is cleared when the mock server starts.
+
+## Responses API
+
+`when(...)` expectations also answer `POST /v1/responses`, matched on the last input text. `replyWith` returns a
+single text message, `thenRespondWith` a custom body, and `replyWithResponsesOutput` any output items, for example an
+MCP approval request or a message whose text carries citations:
+
+```java
+.when("What is Apache Camel?")
+    .replyWithResponsesOutput("""
+        [{"type": "mcp_approval_request", "id": "mcpr_1", "server_label": "deepwiki",
+          "name": "ask_question", "arguments": "{}"}]""")
+.end()
+```
+
+`invokeTool` sequences work for the Responses API too. The mock replies with `function_call` items, and a
+follow-up request whose input ends with `function_call_output` items gets the next step of the sequence, then the
+`replyWith` text.
+
+Every response is stored, so `GET /v1/responses/{id}` returns it and `POST /v1/responses/{id}/cancel` cancels it.
+A request with `"background": true` is answered with a `queued` response without output, and retrieving it returns
+the completed response.
+
+## Error replies
+
+`replyWithError` answers a chat completion or Responses API request with an OpenAI API error, and `withRetryAfter`
+adds a `Retry-After` header:
+
+```java
+.when("slow down")
+    .replyWithError(429, "rate_limit_exceeded", "Rate limit reached")
+    .withRetryAfter(7)
+.end()
+```
+
+The OpenAI SDK retries 408, 409, 429 and 5xx responses on its own, so configure the client under test with no retries
+to observe the error at once.
+## Batch API
+
+The mock serves the Files and Batch APIs, so a route can upload an input file, poll a batch and read its result
+files. Every request line of the input file is matched to an expectation by its `custom_id`:
+
+```java
+static OpenAIMock openAIMock = new OpenAIMock().builder()
+    .whenBatchRequest("ticket-1").replyWithBatchContent("billing").end()
+    .whenBatchRequest("ticket-2").replyWithBatchError(429, "rate_limit_exceeded", "Rate limit reached").end()
+    .build();
+```
+
+A batch walks through `validating`, `in_progress`, `finalizing` and `completed`, one step per retrieve, so a
+polling route sees the same sequence as against the real API. Cancelling a running batch reports it as
+`cancelling`, and the next retrieve as `cancelled`, which is final; cancelling a final batch fails with a 400 as it
+does against the API. Once a final status is reached, lines with a reply are written to the output file of the
+batch and lines with an error to its error file, and a line whose `custom_id` has no expectation fails as well.
+
+`replyWithBatchResponse` sets the raw response body of a line, for endpoints other than chat completions, while
+`replyWithBatchContent` wraps the text in a chat completion.
+
+`getBatchStore().getUploadedFile()` returns the JSONL the route uploaded, and `getUploadedFileName()` the name it
+was uploaded under, so a test can assert on the requests it built.
